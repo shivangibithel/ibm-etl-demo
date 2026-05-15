@@ -7,12 +7,26 @@
 
 // ── State ────────────────────────────────────────────────
 let pipelineData = null;
+let revisedPipelineLoaded = false; // tracks if revise uploaded a new file
 
 // ── Upload Zone Setup ────────────────────────────────────
 const uploadZone = document.getElementById('uploadZone');
 const fileInput  = document.getElementById('fileInput');
 
-uploadZone.addEventListener('click', () => fileInput.click());
+// Only open file dialog when clicking the zone itself, NOT when
+// a child element (like the browse button) already handles it.
+uploadZone.addEventListener('click', e => {
+  // If the click came from the browse button, it calls fileInput.click()
+  // directly — don't double-trigger here.
+  if (e.target.closest('.link-btn')) return;
+  fileInput.click();
+});
+
+// The "browse files" link-button inside the zone
+document.getElementById('browseLinkBtn').addEventListener('click', e => {
+  e.stopPropagation(); // prevent bubbling to uploadZone
+  fileInput.click();
+});
 
 uploadZone.addEventListener('dragover', e => {
   e.preventDefault();
@@ -28,10 +42,12 @@ uploadZone.addEventListener('drop', e => {
 
 fileInput.addEventListener('change', e => {
   const file = e.target.files[0];
-  if (file) handleFile(file);
+  if (file) handleFile(file, revisedPipelineLoaded);
+  // Reset so re-selecting same file still fires 'change'
+  fileInput.value = '';
 });
 
-function handleFile(file) {
+function handleFile(file, isRevise = false) {
   if (!file.name.endsWith('.json')) {
     alert('Please upload a valid JSON file.');
     return;
@@ -42,11 +58,74 @@ function handleFile(file) {
     try {
       pipelineData = JSON.parse(evt.target.result);
     } catch {
-      pipelineData = { _raw: evt.target.result }; // fallback
+      pipelineData = { _raw: evt.target.result };
     }
-    renderLoadedFile(file, pipelineData);
+    if (isRevise) {
+      renderRevisedFile(file, pipelineData);
+    } else {
+      renderLoadedFile(file, pipelineData);
+    }
   };
   reader.readAsText(file);
+}
+
+// ── Revise Pipeline: reset all downstream sections ───────
+function revisePipeline() {
+  revisedPipelineLoaded = true;
+
+  // Hide & clear all downstream sections
+  ['section-validation', 'section-val-report', 'section-preexec', 'section-preexec-report', 'section-run'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.add('hidden');
+  });
+
+  // Clear dynamically injected content
+  document.getElementById('stepsList').innerHTML = '';
+  document.getElementById('stepsList').classList.add('hidden');
+  document.getElementById('spinnerBlock').classList.remove('hidden');
+
+  document.getElementById('preExecStepsList').innerHTML = '';
+  document.getElementById('preExecStepsList').classList.add('hidden');
+  document.getElementById('preExecSpinner').classList.add('hidden');
+
+  document.getElementById('valReportContent').innerHTML = '';
+  document.getElementById('valReportAction').innerHTML = '';
+  document.getElementById('preExecReportContent').innerHTML = '';
+  document.getElementById('preExecAction').innerHTML = '';
+
+  // Re-show upload zone for a new file
+  document.getElementById('pipelineDiagram').classList.add('hidden');
+  document.getElementById('jsonPreview').classList.add('hidden');
+  document.getElementById('validateBtn').disabled = true;
+
+  // Scroll back to upload section
+  document.getElementById('section-upload').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // Trigger file input for a new file
+  fileInput.click();
+}
+
+// After a revised file is loaded, show it AND the two-option action bar
+function renderRevisedFile(file, data) {
+  revisedPipelineLoaded = false;
+  renderLoadedFile(file, data);
+
+  // Replace the validate button area with two choices
+  const action = document.querySelector('#section-upload .card-action');
+  action.innerHTML = `
+    <button class="btn-primary" id="validateBtn" onclick="startValidation()">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9L7 13L15 5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Validate Again
+    </button>
+    <button class="btn-secondary" onclick="skipToPreExec()">
+      Skip Validation → Pre-Execution Checks
+    </button>
+  `;
+}
+
+// Skip validation and jump straight to pre-execution checks
+function skipToPreExec() {
+  startPreExec();
 }
 
 function renderLoadedFile(file, data) {
@@ -493,7 +572,7 @@ function showValidationReport() {
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9H15M9 3L15 9L9 15" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Proceed to Pre-Execution Checks
     </button>
-    <button class="btn-secondary" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+    <button class="btn-secondary" onclick="revisePipeline()">
       Revise Pipeline
     </button>
   `;
