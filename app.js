@@ -216,78 +216,75 @@ function makePipelineNode(cx, cy, label, color) {
   return rects + texts;
 }
 
-// ── Validation Steps Data ────────────────────────────────
-const VALIDATION_STEPS = [
+// ── BEACON Validation Stages ─────────────────────────────
+const BEACON_STAGES = [
   {
-    title: 'Pipeline Descriptor Parsing',
-    desc:  'Parsing and deserializing the JSON pipeline definition',
-    outputType: 'list',
-    output: [
-      'Pipeline format: IBM DataStage v11.7 descriptor',
-      'Root keys detected: nodes, edges, metadata, config',
-      'Encoding: UTF-8 · No BOM detected',
-      'JSON schema version: 2.1.0',
-      'Parser status: SUCCESS — no syntax errors',
-    ]
-  },
-  {
-    title: 'Node & Edge Graph Validation',
-    desc:  'Validating directed acyclic graph structure',
+    title: 'Normalize ETL Pipeline',
+    badge: 'complete',
     outputType: 'json',
     output: {
-      graph_analysis: {
-        total_nodes: 7,
-        total_edges: 8,
-        source_nodes: ["SOURCE_DB2"],
-        sink_nodes: ["TARGET_DW_TABLE"],
-        is_acyclic: true,
-        max_depth: 4,
-        isolated_nodes: []
-      },
-      status: "VALID"
-    }
-  },
-  {
-    title: 'Stage Type Recognition',
-    desc:  'Checking all stage types against supported operator catalogue',
-    outputType: 'list',
-    output: [
-      'DB2Connector v4.2 → SUPPORTED',
-      'FilterStage v3.0 → SUPPORTED',
-      'JoinStage v3.1 → SUPPORTED',
-      'AggregateStage v2.5 → SUPPORTED',
-      'SchemaValidator v1.8 → SUPPORTED',
-      'DataTypeCheck v2.0 → SUPPORTED',
-      'DWConnector v4.2 → SUPPORTED',
-    ]
-  },
-  {
-    title: 'Schema & Column Mapping',
-    desc:  'Validating column lineage and type compatibility across all stages',
-    outputType: 'json',
-    output: {
-      columns_validated: 34,
-      type_mismatches: 0,
-      nullable_violations: 1,
-      unresolved_references: 0,
-      warnings: [
-        "Column 'order_ts' is nullable at SOURCE but NOT NULL in TARGET — coalesce recommended"
+      pipeline_name: "Daily_Net_Sales_Consolidation",
+      nodes: [
+        { id:"STAGE_POS",       type:"unknown",   name:"POS_Source",        inputs:[],                         output:"L_POS",                  schema:[{name:"order_id",type:"int32"},{name:"order_date",type:"string"},{name:"store_id",type:"string"},{name:"amount_local",type:"int32"},{name:"currency",type:"string"},{name:"channel",type:"string"}], params:{file_path:"POS_Data.csv",delimiter:",",null_field:""} },
+        { id:"STAGE_ECOM",      type:"unknown",   name:"ECOM_Source",       inputs:[],                         output:"L_ECOM",                 schema:[{name:"order_id",type:"int32"},{name:"order_date",type:"string"},{name:"customer_id",type:"string"},{name:"amount_usd",type:"int32"},{name:"currency_flag",type:"string"},{name:"channel",type:"string"}], params:{file_path:"ECOM_Data.csv",delimiter:","} },
+        { id:"STAGE_RETURNS",   type:"unknown",   name:"Returns_Source",    inputs:[],                         output:"L_RETURNS",              params:{file_path:"Returns_Data_Correct.csv",delimiter:","} },
+        { id:"STAGE_JOIN1",     type:"join",      name:"Join_POS_ECOM",     inputs:["L_POS","L_ECOM"],         output:"L_MERGED_ORDERS",        params:{join_type:"full_outer",join_keys:["order_id"]} },
+        { id:"STAGE_JOIN2",     type:"join",      name:"Join_With_Returns", inputs:["L_MERGED_ORDERS","L_RETURNS"], output:"L_MERGED_WITH_RETURNS", params:{join_type:"left_outer",join_keys:["order_id"]} },
+        { id:"STAGE_TRANSFORM", type:"transform", name:"Compute_Net",       inputs:["L_MERGED_WITH_RETURNS"],  output:"L_TRANSFORMED",          params:{expressions:{amount_usd:"IF currency='USD' THEN amount_local ELSE amount_local * rate_to_usd",net_amount_usd:"amount_usd - NVL(return_amount_usd,0)"}} },
+        { id:"STAGE_AGG",       type:"aggregate", name:"Aggregate_Daily",   inputs:["L_TRANSFORMED"],          output:"L_DAILY",                params:{group_by:["order_date","channel"],aggregations:{total_amount_usd:"SUM(amount_usd)",total_net_amount_usd:"SUM(net_amount_usd)"}} },
+        { id:"STAGE_TARGET",    type:"unknown",   name:"Load_To_Fact",      inputs:["L_DAILY"],                output:"FACT_DAILY_SALES",       params:{} }
+      ],
+      edges: [
+        {from:"STAGE_POS",to:"L_POS"},{from:"STAGE_ECOM",to:"L_ECOM"},{from:"STAGE_RETURNS",to:"L_RETURNS"},
+        {from:"L_POS",to:"STAGE_JOIN1"},{from:"L_ECOM",to:"STAGE_JOIN1"},{from:"STAGE_JOIN1",to:"L_MERGED_ORDERS"},
+        {from:"L_MERGED_ORDERS",to:"STAGE_JOIN2"},{from:"L_RETURNS",to:"STAGE_JOIN2"},{from:"STAGE_JOIN2",to:"L_MERGED_WITH_RETURNS"},
+        {from:"L_MERGED_WITH_RETURNS",to:"STAGE_TRANSFORM"},{from:"STAGE_TRANSFORM",to:"L_TRANSFORMED"},
+        {from:"L_TRANSFORMED",to:"STAGE_AGG"},{from:"STAGE_AGG",to:"L_DAILY"},{from:"L_DAILY",to:"STAGE_TARGET"},{from:"STAGE_TARGET",to:"FACT_DAILY_SALES"}
       ]
     }
   },
   {
-    title: 'Parameter & Expression Check',
-    desc:  'Evaluating runtime parameters, SQL expressions, and derivation formulas',
-    outputType: 'list',
+    title: 'Extract Semantics',
+    badge: 'complete',
+    outputType: 'json',
     output: [
-      'Runtime parameters: 12 defined · 12 resolved',
-      'SQL expressions: 4 validated · 0 parse errors',
-      'Derivation formulas: 7 validated · 0 type errors',
-      'Lookup conditions: 3 validated · 0 missing keys',
-      'Expression sandbox: all passed',
+      { operation_type:'source',  output:'L_POS',                stage_id:'STAGE_POS',       stage_name:'POS_Source',      source_fp:'POS_Data.csv' },
+      { operation_type:'source',  output:'L_ECOM',               stage_id:'STAGE_ECOM',      stage_name:'ECOM_Source',     source_fp:'ECOM_Data.csv' },
+      { operation_type:'source',  output:'L_RETURNS',            stage_id:'STAGE_RETURNS',   stage_name:'Returns_Source',  source_fp:'Returns_Data_Correct.csv' },
+      { operation_type:'join',    output:'L_MERGED_ORDERS',      stage_id:'STAGE_JOIN1',     stage_name:'Join_POS_ECOM',   inputs:['L_POS','L_ECOM'],               join_type:'full_outer',  join_keys:['order_id'] },
+      { operation_type:'join',    output:'L_MERGED_WITH_RETURNS',stage_id:'STAGE_JOIN2',     stage_name:'Join_With_Returns', inputs:['L_MERGED_ORDERS','L_RETURNS'], join_type:'left_outer',  join_keys:['order_id'] },
+      { operation_type:'transform',output:'L_TRANSFORMED',       stage_id:'STAGE_TRANSFORM', stage_name:'Compute_Net',     inputs:['L_MERGED_WITH_RETURNS'], expressions:{amount_usd:"IF currency='USD' THEN amount_local ELSE amount_local * rate_to_usd",net_amount_usd:'amount_usd - NVL(return_amount_usd,0)'} },
+      { operation_type:'aggregate',output:'L_DAILY',             stage_id:'STAGE_AGG',       stage_name:'Aggregate_Daily', inputs:['L_TRANSFORMED'], group_by:['order_date','channel'], aggregations:{total_amount_usd:'SUM(amount_usd)',total_net_amount_usd:'SUM(net_amount_usd)'} }
     ]
   },
+  {
+    title: 'Infer Intent',
+    badge: 'complete',
+    outputType: 'text',
+    output: 'To integrate and analyze sales data from different channels (POS and ECOM) including returns, to compute net sales amounts and aggregate them by day and channel.'
+  },
+  {
+    title: 'Infer Expected Behaviour',
+    badge: 'complete',
+    outputType: 'text',
+    output: 'Expected behaviour synthesized considering the global pipeline intent and the extracted semantics!'
+  },
+  {
+    title: 'Detect Mismatch',
+    badge: 'warning',
+    outputType: 'text',
+    output: 'Input ETL Pipeline validated against the inferred Expected behavior.<br><strong>Three silent defects</strong> detected!'
+  },
+  {
+    title: 'Diagnostics & Fixes',
+    badge: 'warning',
+    outputType: 'text',
+    output: 'Detailed report generated for the <strong>three silent defects</strong> along with their suggested fixes.'
+  }
 ];
+
+// ── (legacy kept for Pre-Exec flow) ──────────────────────
+const VALIDATION_STEPS = BEACON_STAGES;
 
 // ── Pre-Execution Steps Data ─────────────────────────────
 const PRE_EXEC_STEPS = [
@@ -369,16 +366,16 @@ const PRE_EXEC_STEPS = [
 
 // ── Validation Checks ────────────────────────────────────
 const VALIDATION_CHECKS = [
-  { name: 'JSON Syntax Valid',           detail: 'RFC 8259 compliant',       status: 'pass' },
-  { name: 'Graph is Acyclic (DAG)',      detail: 'No cyclic dependencies',   status: 'pass' },
-  { name: 'All Stages Recognised',       detail: '7/7 stages supported',     status: 'pass' },
-  { name: 'Column Type Compatibility',   detail: '34 columns checked',       status: 'pass' },
-  { name: 'Nullable Constraint',         detail: '1 warning — order_ts',     status: 'warn' },
-  { name: 'Runtime Parameters Resolved', detail: '12/12 resolved',           status: 'pass' },
-  { name: 'SQL Expression Parse',        detail: '4/4 valid',                status: 'pass' },
-  { name: 'Unresolved Column Refs',      detail: '0 found',                  status: 'pass' },
-  { name: 'Sink Node Reachability',      detail: 'All paths reach sink',     status: 'pass' },
-  { name: 'Schema Version Compatible',   detail: 'v2.1.0 → engine v11.7',   status: 'pass' },
+  { name: 'Pipeline Parsing',            detail: 'JSON structure valid',       status: 'pass' },
+  { name: 'DAG Acyclicity',              detail: 'No cyclic dependencies',     status: 'pass' },
+  { name: 'Stage Type Recognition',      detail: '8/8 stages recognised',      status: 'pass' },
+  { name: 'Column Type Compatibility',   detail: '22 columns checked',         status: 'pass' },
+  { name: 'Schema Presence Check',       detail: 'Returns_Source has no schema', status: 'warn' },
+  { name: 'Join Type — Join_Returns',    detail: 'FULL OUTER should be LEFT',  status: 'fail' },
+  { name: 'Runtime Parameters Resolved', detail: 'All params resolved',        status: 'pass' },
+  { name: 'Expression Validity',         detail: '2/2 expressions parseable',  status: 'pass' },
+  { name: 'Sink Node Reachability',      detail: 'FACT_DAILY_SALES reachable', status: 'pass' },
+  { name: 'Join Semantics — Join_Orders',detail: 'FULL OUTER on fact streams', status: 'warn' },
 ];
 
 const PRE_EXEC_CHECKS = [
@@ -424,6 +421,9 @@ function checkIconForStatus(s) {
 function renderOutput(step) {
   if (step.outputType === 'list') {
     return `<ul>${step.output.map(i => `<li>${i}</li>`).join('')}</ul>`;
+  }
+  if (step.outputType === 'text') {
+    return `<p class="beacon-text-output">${step.output}</p>`;
   }
   return `<pre>${JSON.stringify(step.output, null, 2)}</pre>`;
 }
@@ -493,46 +493,99 @@ function startValidation() {
   }, 3000);
 }
 
+let activeBeaconIdx = 0;
+
 async function runAnalysisSteps() {
   const list = document.getElementById('stepsList');
   list.classList.remove('hidden');
+  list.innerHTML = '';
 
-  for (let i = 0; i < VALIDATION_STEPS.length; i++) {
-    const step = VALIDATION_STEPS[i];
-    const el = buildStepEl(step, i, 'running');
-    list.appendChild(el);
-    await delay(1000);
+  // Build the two-panel BEACON layout
+  list.innerHTML = `
+    <div class="beacon-layout">
+      <div class="beacon-sidebar" id="beaconSidebar"></div>
+      <div class="beacon-output-panel" id="beaconOutputPanel">
+        <div class="beacon-output-placeholder">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="#C6C6C6" stroke-width="1.5"/><path d="M14 20h12M20 14v12" stroke="#C6C6C6" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <p>Select a stage to view its output</p>
+        </div>
+      </div>
+    </div>
+  `;
 
-    // Upgrade to complete
-    const id = `step-body-${i}`;
-    const header = el.querySelector('.step-item-header');
-    const badgeClass = (step.output && (step.output.nullable_violations || step.output.warnings)) ? 'warning' : 'complete';
-    const icon = badgeClass === 'warning' ? iconWarn() : iconComplete();
-    const badgeLabel = badgeClass === 'warning' ? 'WARNING' : 'COMPLETE';
+  const sidebar = document.getElementById('beaconSidebar');
 
-    header.innerHTML = `
-      ${icon}
-      <span class="step-item-title">${step.title}</span>
-      <span class="step-badge ${badgeClass}">${badgeLabel}</span>
-      <svg class="step-chevron" id="chev-${id}" viewBox="0 0 16 16" fill="none">
-        <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
+  for (let i = 0; i < BEACON_STAGES.length; i++) {
+    const step = BEACON_STAGES[i];
+
+    // Build sidebar row in RUNNING state
+    const row = document.createElement('div');
+    row.className = 'beacon-stage-row running';
+    row.id = `beacon-row-${i}`;
+    row.dataset.idx = i;
+    row.innerHTML = `
+      <div class="beacon-stage-status" id="beacon-status-${i}">${iconRunning()}</div>
+      <div class="beacon-stage-info">
+        <span class="beacon-stage-title">${step.title}</span>
+        <span class="beacon-stage-badge running" id="beacon-badge-${i}">RUNNING</span>
+      </div>
+      <span class="beacon-stage-op-tag">O/P</span>
     `;
-    // re-bind click
-    header.setAttribute('onclick', `toggleStep('${id}')`);
+    sidebar.appendChild(row);
 
-    // Fill body
-    const body = document.getElementById(id);
-    body.querySelector('.step-output').innerHTML = renderOutput(step);
+    await delay(900);
 
-    // Auto-open first
-    if (i === 0) { body.classList.add('open'); document.getElementById('chev-' + id)?.classList.add('open'); }
+    // Upgrade to final state
+    const badgeClass = step.badge;
+    const badgeLabel = badgeClass === 'warning' ? 'WARNING' : 'COMPLETE';
+    const icon = badgeClass === 'warning' ? iconWarn() : iconComplete();
 
-    await delay(400);
+    row.classList.remove('running');
+    row.classList.add(badgeClass);
+    document.getElementById(`beacon-status-${i}`).innerHTML = icon;
+    const badge = document.getElementById(`beacon-badge-${i}`);
+    badge.textContent = badgeLabel;
+    badge.className = `beacon-stage-badge ${badgeClass}`;
+
+    // Make clickable
+    row.onclick = () => showBeaconOutput(i);
+
+    await delay(200);
   }
+
+  // Auto-select first stage
+  showBeaconOutput(0);
 
   await delay(500);
   showValidationReport();
+}
+
+function showBeaconOutput(idx) {
+  // Highlight active row
+  document.querySelectorAll('.beacon-stage-row').forEach((r, i) => {
+    r.classList.toggle('active', i === idx);
+  });
+
+  activeBeaconIdx = idx;
+  const step = BEACON_STAGES[idx];
+  const panel = document.getElementById('beaconOutputPanel');
+
+  const badgeClass = step.badge;
+  const badgeLabel = badgeClass === 'warning' ? 'WARNING' : 'COMPLETE';
+
+  panel.innerHTML = `
+    <div class="beacon-output-header">
+      <div class="beacon-output-title">
+        <span class="beacon-output-step-num">${String(idx + 1).padStart(2, '0')}</span>
+        <span>${step.title}</span>
+      </div>
+      <span class="beacon-stage-badge ${badgeClass}">${badgeLabel}</span>
+    </div>
+    <div class="beacon-output-body">
+      <div class="beacon-output-label">Output</div>
+      <div class="step-output">${renderOutput(step)}</div>
+    </div>
+  `;
 }
 
 // ── Validation Report ────────────────────────────────────
@@ -548,21 +601,67 @@ function showValidationReport() {
 
   const content = document.getElementById('valReportContent');
   content.innerHTML = `
-    <div class="report-summary">
-      <div class="report-stat stat-total"><div class="stat-val">${total}</div><div class="stat-label">TOTAL CHECKS</div></div>
-      <div class="report-stat stat-pass"><div class="stat-val">${pass}</div><div class="stat-label">PASSED</div></div>
-      <div class="report-stat stat-warn"><div class="stat-val">${warn}</div><div class="stat-label">WARNINGS</div></div>
-      <div class="report-stat stat-fail"><div class="stat-val">${fail}</div><div class="stat-label">FAILED</div></div>
+    <div class="report-summary clickable-kpis">
+      <div class="report-stat stat-total" onclick="toggleCheckPanel('all')">
+        <div class="stat-val">${total}</div><div class="stat-label">TOTAL CHECKS</div>
+      </div>
+      <div class="report-stat stat-pass" onclick="toggleCheckPanel('pass')">
+        <div class="stat-val">${pass}</div><div class="stat-label">PASSED</div>
+      </div>
+      <div class="report-stat stat-warn" onclick="toggleCheckPanel('warn')">
+        <div class="stat-val">${warn}</div><div class="stat-label">WARNINGS</div>
+      </div>
+      <div class="report-stat stat-fail" onclick="toggleCheckPanel('fail')">
+        <div class="stat-val">${fail}</div><div class="stat-label">FAILED</div>
+      </div>
     </div>
-    <div class="report-checks">
-      ${VALIDATION_CHECKS.map((c, i) => `
-        <div class="report-check-row" style="animation-delay:${i * 60}ms">
-          <div class="check-icon">${checkIconForStatus(c.status)}</div>
-          <div class="check-name">${c.name}</div>
-          <div class="check-detail">${c.detail}</div>
-          <div class="check-status ${c.status}">${c.status.toUpperCase()}</div>
-        </div>
-      `).join('')}
+    <div class="kpi-hint">Click a number to see details</div>
+    <div class="check-panel hidden" id="checkPanel"></div>
+    <div class="defect-section">
+      <div class="defect-section-label">Detected Defects</div>
+      ${buildDefectExpander(
+        'fail', '❌ Defect — Invalid Join with Returns Data',
+        `<p class="defect-what"><strong>What happened</strong></p>
+         <p>Sales orders were joined with returns using a <code>FULL OUTER JOIN</code> in <code>Join_Returns</code>.</p>`,
+        `<div class="defect-warning-box">⚠ <strong>Invalid join semantics detected</strong><br>Expected join type: LEFT OUTER (Joined Orders ⟕ Returns) in <code>Join_Returns</code></div>`,
+        `<p><strong>Why it's risky</strong></p>
+         <ul class="defect-list">
+           <li>Returns are <strong>adjustments</strong>, not transactions</li>
+           <li>Return-only rows can create <strong>fake sales records</strong> with negative revenue</li>
+           <li>Revenue and margin calculations become unreliable</li>
+         </ul>`,
+        `<ul class="defect-list"><li>Replace FULL OUTER JOIN with LEFT OUTER JOIN in <code>Join_Returns</code></li></ul>`
+      )}
+      ${buildDefectExpander(
+        'warn', '⚠️ Defect — Revenue Inflation from Join Semantics',
+        `<p class="defect-what"><strong>What happened</strong></p>
+         <p>POS and ECOM sales were merged using a <code>FULL OUTER JOIN</code> on <code>order_id</code>, followed by aggregation to compute revenue.</p>`,
+        `<div class="defect-warning-box warn-yellow">⚠ <strong>High-risk fact consolidation detected</strong><br>FULL OUTER JOIN on <code>order_id</code> in <code>Join_Orders</code> may duplicate revenue</div>`,
+        `<p><strong>Why it's risky</strong></p>
+         <ul class="defect-list">
+           <li>POS and ECOM may represent independent or partially overlapping fact streams</li>
+           <li><code>Join_Orders</code> may work only if <code>POS_Sales</code> and <code>ECOM_Sales</code> are dependent</li>
+           <li>Without reconciliation or deduplication, overlapping transactions may be counted multiple times</li>
+           <li>The pipeline succeeds, but reported revenue may be silently overstated</li>
+         </ul>`,
+        `<ul class="defect-list">
+           <li><strong>Dependency Check:</strong> Determine whether <code>POS_Sales</code> and <code>ECOM_Sales</code> are dependent or independent</li>
+           <li><strong>Option 1:</strong> Deduplicate or apply precedence, if dependent</li>
+           <li><strong>Option 2:</strong> If independent, replace <code>Join_Orders</code> with set-union semantics (e.g., <code>UNION ALL</code> or <code>FUNNEL</code>) to avoid duplicate counting</li>
+         </ul>`
+      )}
+      ${buildDefectExpander(
+        'warn', '⚠️ Defect — Semantic Attribute Collision',
+        `<p class="defect-what"><strong>What happened</strong></p>
+         <p>Both <code>POS_Sales</code> and <code>ECOM_Sales</code> have a <code>channel</code> attribute, which is later used in aggregation.</p>`,
+        `<div class="defect-warning-box warn-yellow">⚠ <strong>Semantic collision detected</strong><br>Incompatible semantics used in GROUP BY of <code>Agg_Daily_Net_Sales</code> for attribute <code>channel</code></div>`,
+        `<p><strong>Why it's risky</strong></p>
+         <ul class="defect-list">
+           <li><code>channel</code> may represent different concepts in each source (e.g. store type in POS vs sales medium in ECOM)</li>
+           <li>Aggregating or grouping by it may mix incompatible dimensions, producing misleading results</li>
+         </ul>`,
+        `<ul class="defect-list"><li>Ensure <code>channel</code> in <code>POS_Sales</code> and <code>ECOM_Sales</code> represents the same concept before aggregating</li></ul>`
+      )}
     </div>
   `;
 
@@ -576,6 +675,80 @@ function showValidationReport() {
       Revise Pipeline
     </button>
   `;
+}
+
+function buildDefectExpander(type, title, what, warningBox, why, fixes) {
+  const uid = 'defect-' + Math.random().toString(36).slice(2, 8);
+  const borderClass = type === 'fail' ? 'defect-fail' : 'defect-warn';
+  return `
+    <div class="defect-expander ${borderClass}" id="${uid}">
+      <div class="defect-expander-header" onclick="toggleDefect('${uid}')">
+        <span class="defect-expander-title">${title}</span>
+        <svg class="defect-chev" id="chev-${uid}" viewBox="0 0 16 16" fill="none">
+          <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="defect-expander-body" id="body-${uid}">
+        <div class="defect-body-inner">
+          ${what}
+          ${warningBox}
+          ${why}
+          <div class="defect-fix-expander" id="fix-${uid}">
+            <div class="defect-fix-header" onclick="toggleDefectFix('fix-${uid}')">
+              🔧 Suggested Fixes
+              <svg class="defect-chev" id="chev-fix-${uid}" viewBox="0 0 16 16" fill="none">
+                <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="defect-fix-body hidden" id="fixbody-${uid}">
+              ${fixes}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleDefect(uid) {
+  const body = document.getElementById('body-' + uid);
+  const chev = document.getElementById('chev-' + uid);
+  const open = body.classList.toggle('open');
+  chev.classList.toggle('open', open);
+}
+
+function toggleDefectFix(fixUid) {
+  const fixBodyId = fixUid.replace(/^fix-/, 'fixbody-');
+  const chevId    = 'chev-' + fixUid;
+  const b = document.getElementById(fixBodyId);
+  const c = document.getElementById(chevId);
+  if (b) { const isHidden = b.classList.toggle('hidden'); if (c) c.classList.toggle('open', !isHidden); }
+}
+
+let activeCheckFilter = null;
+function toggleCheckPanel(filter) {
+  const panel = document.getElementById('checkPanel');
+  if (activeCheckFilter === filter) {
+    panel.classList.add('hidden');
+    activeCheckFilter = null;
+    document.querySelectorAll('.report-stat').forEach(s => s.classList.remove('kpi-active'));
+    return;
+  }
+  activeCheckFilter = filter;
+  document.querySelectorAll('.report-stat').forEach(s => s.classList.remove('kpi-active'));
+  const idx = { all: 0, pass: 1, warn: 3, fail: 2 }; // order in grid
+  document.querySelectorAll('.report-stat')[['all','pass','warn','fail'].indexOf(filter)]?.classList.add('kpi-active');
+
+  const filtered = filter === 'all' ? VALIDATION_CHECKS : VALIDATION_CHECKS.filter(c => c.status === filter);
+  panel.innerHTML = filtered.map(c => `
+    <div class="report-check-row">
+      <div class="check-icon">${checkIconForStatus(c.status)}</div>
+      <div class="check-name">${c.name}</div>
+      <div class="check-detail">${c.detail}</div>
+      <div class="check-status ${c.status}">${c.status.toUpperCase()}</div>
+    </div>
+  `).join('');
+  panel.classList.remove('hidden');
 }
 
 // ── Pre-Execution ────────────────────────────────────────
