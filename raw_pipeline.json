@@ -1,0 +1,114 @@
+{
+  "job_name": "Daily_Net_Sales_Consolidation",
+  "stages": [
+    {
+      "stage_id": "STAGE_POS",
+      "stage_type": "SequentialFile",
+      "name": "POS_Source",
+      "output_link": "L_POS",
+      "schema": [
+        {"name": "order_id", "type": "int32"},
+        {"name": "order_date", "type": "string"},
+        {"name": "store_id", "type": "string"},
+        {"name": "amount_local", "type": "int32"},
+        {"name": "currency", "type": "string"},
+        {"name": "channel", "type": "string"}
+      ],
+      "properties": {
+        "file_path": "POS_Data.csv",
+        "delimiter": ",",
+        "null_field": ""
+      }
+    },
+    {
+      "stage_id": "STAGE_ECOM",
+      "stage_type": "SequentialFile",
+      "name": "ECOM_Source",
+      "output_link": "L_ECOM",
+      "schema": [
+        {"name": "order_id", "type": "int32"},
+        {"name": "order_date", "type": "string"},
+        {"name": "customer_id", "type": "string"},
+        {"name": "amount_usd", "type": "int32"},
+        {"name": "currency_flag", "type": "string"},
+        {"name": "channel", "type": "string"}
+      ],
+      "properties": {
+        "file_path": "ECOM_Data.csv",
+        "delimiter": ","
+      }
+    },
+    {
+      "stage_id": "STAGE_RETURNS",
+      "stage_type": "SequentialFile",
+      "name": "Returns_Source",
+      "output_link": "L_RETURNS",
+      "schema": [
+        {"name": "order_id", "type": "int32"},
+        {"name": "return_amount_local", "type": "int32"},
+        {"name": "return_date", "type": "string"},
+        {"name": "currency", "type": "string"}
+      ],
+      "properties": {
+        "file_path": "Returns_Data_Correct.csv",
+        "delimiter": ","
+      }
+    },
+    {
+      "stage_id": "STAGE_JOIN1",
+      "stage_type": "Join",
+      "name": "Join_POS_ECOM",
+      "input_links": ["L_POS", "L_ECOM"],
+      "output_link": "L_MERGED_ORDERS",
+      "properties": {
+        "join_type": "full_outer",
+        "join_keys": ["order_id"]
+      }
+    },
+    {
+      "stage_id": "STAGE_JOIN2",
+      "stage_type": "Join",
+      "name": "Join_With_Returns",
+      "input_links": ["L_MERGED_ORDERS", "L_RETURNS"],
+      "output_link": "L_MERGED_WITH_RETURNS",
+      "properties": {
+        "join_type": "left_outer",
+        "join_keys": ["order_id"]
+      }
+    },
+    {
+      "stage_id": "STAGE_TRANSFORM",
+      "stage_type": "Transformer",
+      "name": "Compute_Net",
+      "input_links": ["L_MERGED_WITH_RETURNS"],
+      "output_link": "L_TRANSFORMED",
+      "properties": {
+        "expressions": {
+          "amount_usd": "IF currency='USD' THEN amount_local ELSE amount_local * rate_to_usd",
+          "net_amount_usd": "amount_usd - NVL(return_amount_usd,0)"
+        }
+      }
+    },
+    {
+      "stage_id": "STAGE_AGG",
+      "stage_type": "Aggregator",
+      "name": "Aggregate_Daily",
+      "input_links": ["L_TRANSFORMED"],
+      "output_link": "L_DAILY",
+      "properties": {
+        "group_by": ["order_date", "channel"],
+        "aggregations": {
+          "total_amount_usd": "SUM(amount_usd)",
+          "total_net_amount_usd": "SUM(net_amount_usd)"
+        }
+      }
+    },
+    {
+      "stage_id": "STAGE_TARGET",
+      "stage_type": "DatabaseConnector",
+      "name": "Load_To_Fact",
+      "input_links": ["L_DAILY"],
+      "output_table": "FACT_DAILY_SALES"
+    }
+  ]
+}
