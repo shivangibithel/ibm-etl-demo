@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>IBM DataStage | Pre-Run ETL Validation Suite</title>
+  <title>BEACON Validation Suite</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap" rel="stylesheet" />
@@ -13,33 +13,10 @@
   <!-- ── HEADER ─────────────────────────────────────── -->
   <header class="topbar">
     <div class="topbar-left">
-      <svg class="ibm-logo" viewBox="0 0 80 32" xmlns="http://www.w3.org/2000/svg">
-        <rect x="0"  y="4"  width="12" height="3" fill="#0F62FE"/>
-        <rect x="0"  y="9"  width="12" height="3" fill="#0F62FE"/>
-        <rect x="0"  y="14" width="12" height="3" fill="#0F62FE"/>
-        <rect x="0"  y="19" width="12" height="3" fill="#0F62FE"/>
-        <rect x="0"  y="24" width="12" height="3" fill="#0F62FE"/>
-        <rect x="15" y="4"  width="20" height="3" fill="#0F62FE"/>
-        <rect x="15" y="9"  width="20" height="3" fill="#0F62FE"/>
-        <rect x="15" y="14" width="12" height="3" fill="#0F62FE"/>
-        <rect x="15" y="19" width="20" height="3" fill="#0F62FE"/>
-        <rect x="15" y="24" width="20" height="3" fill="#0F62FE"/>
-        <rect x="40" y="4"  width="20" height="3" fill="#0F62FE"/>
-        <rect x="40" y="9"  width="8"  height="3" fill="#0F62FE"/>
-        <rect x="40" y="14" width="8"  height="3" fill="#0F62FE"/>
-        <rect x="40" y="19" width="8"  height="3" fill="#0F62FE"/>
-        <rect x="40" y="24" width="20" height="3" fill="#0F62FE"/>
-        <rect x="55" y="4"  width="5"  height="9" fill="#0F62FE"/>
-        <rect x="55" y="19" width="5"  height="9" fill="#0F62FE"/>
-        <rect x="62" y="4"  width="18" height="3" fill="#0F62FE"/>
-        <rect x="62" y="9"  width="8"  height="3" fill="#0F62FE"/>
-        <rect x="62" y="14" width="8"  height="3" fill="#0F62FE"/>
-        <rect x="62" y="19" width="8"  height="3" fill="#0F62FE"/>
-        <rect x="62" y="24" width="18" height="3" fill="#0F62FE"/>
-      </svg>
+      <img src="pipeline_diagram.png" alt="Logo" class="header-logo" style="height: 32px; width: auto; object-fit: contain;" />
       <div class="brand-text">
-        <span class="brand-product">DataStage</span>
-        <span class="brand-suite">Pre-Run Validation Suite</span>
+        <span class="brand-product">BEACON</span>
+        <span class="brand-suite">Validation Suite</span>
       </div>
     </div>
     <div class="topbar-right">
@@ -52,14 +29,8 @@
   <section class="hero-strip">
     <div class="hero-inner">
       <div class="hero-text">
-        <h1>ETL Pipeline Intelligence</h1>
-        <p>Automated pre-execution validation, data quality profiling, and infrastructure readiness checks — before a single byte hits production.</p>
-      </div>
-      <div class="hero-chips">
-        <span class="chip">Schema Validation</span>
-        <span class="chip">Data Quality</span>
-        <span class="chip">Infra Readiness</span>
-        <span class="chip">Constraint Checks</span>
+        <h1>ETL Pipeline Validation</h1>
+        <p>Automated semantic validation and pre-execution data and infrastructure readiness checks.</p>
       </div>
     </div>
   </section>
@@ -67,63 +38,70 @@
   <!-- ── MAIN CONTENT ────────────────────────────────── -->
   <main class="workspace">
 
-    <!-- STEP 1: Upload -->
+    <!-- STEP 1: Upload with 3-column layout -->
     <section class="card" id="section-upload">
       <div class="card-header">
         <span class="step-num">01</span>
         <div>
           <h2>Load Pipeline Definition</h2>
-          <p class="card-sub">Upload an IBM DataStage pipeline JSON descriptor to begin validation.</p>
+          <p class="card-sub">Upload a pipeline JSON descriptor to begin validation.</p>
         </div>
       </div>
 
-      <div class="upload-zone" id="uploadZone">
-        <input type="file" id="fileInput" accept=".json" hidden />
-        <div class="upload-icon">
-          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M24 32V16M24 16L17 23M24 16L31 23" stroke="#0F62FE" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M8 36C5.8 36 4 34.2 4 32V12C4 9.8 5.8 8 8 8H40C42.2 8 44 9.8 44 12V32C44 34.2 42.2 36 40 36H8Z" stroke="#393939" stroke-width="1.5"/>
-            <path d="M14 42H34" stroke="#0F62FE" stroke-width="2.5" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <p class="upload-label">Drop your <strong>pipeline.json</strong> here</p>
-        <p class="upload-hint">or <button class="link-btn" id="browseLinkBtn">browse files</button></p>
-        <p class="upload-format">Supported format: JSON (IBM DataStage pipeline descriptor)</p>
-      </div>
+      <div class="three-column-layout">
+        <!-- Left Sidebar: Upload Zone -->
+        <div class="upload-sidebar">
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" id="fileInput" accept=".json" hidden />
+            <div class="upload-icon">
+              <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M24 32V16M24 16L17 23M24 16L31 23" stroke="#0F62FE" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M8 36C5.8 36 4 34.2 4 32V12C4 9.8 5.8 8 8 8H40C42.2 8 44 9.8 44 12V32C44 34.2 42.2 36 40 36H8Z" stroke="#393939" stroke-width="1.5"/>
+                <path d="M14 42H34" stroke="#0F62FE" stroke-width="2.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <p class="upload-label">Drop your <strong>pipeline.json</strong> here</p>
+            <p class="upload-hint">or <button class="link-btn" id="browseLinkBtn">browse files</button></p>
+            <p class="upload-format">Supported format: JSON</p>
+          </div>
 
-      <!-- Pipeline diagram area (shown after file load) -->
-      <div class="pipeline-diagram hidden" id="pipelineDiagram">
-        <div class="diagram-label">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#42BE65" stroke-width="1.5"/><path d="M5 8L7 10L11 6" stroke="#42BE65" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Pipeline loaded · <span id="loadedFileName">pipeline.json</span>
-        </div>
-        <div class="diagram-frame">
-          <img id="pipelineImg" src="pipeline_diagram.png" alt="ETL Pipeline Diagram" />
-          <div class="diagram-overlay" id="diagramOverlay">
-            <span>pipeline_diagram.png</span>
+          <div class="pipeline-status hidden" id="pipelineStatus">
+            <div class="diagram-label">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="#42BE65" stroke-width="1.5"/><path d="M5 8L7 10L11 6" stroke="#42BE65" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Pipeline loaded · <span id="loadedFileName">pipeline.json</span>
+            </div>
+          </div>
+
+          <div class="card-action">
+            <button class="btn-primary" id="validateBtn" disabled onclick="startValidation()">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9L7 13L15 5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Validate Pipeline
+            </button>
           </div>
         </div>
-        <div class="file-meta" id="fileMeta">
-          <span class="meta-pill" id="metaNodes">— nodes</span>
-          <span class="meta-pill" id="metaStages">— stages</span>
-          <span class="meta-pill" id="metaSize">— KB</span>
-        </div>
-      </div>
 
-      <!-- JSON preview -->
-      <div class="json-preview hidden" id="jsonPreview">
-        <div class="json-preview-header">
-          <span>pipeline.json</span>
-          <button class="link-btn" id="toggleJsonBtn" onclick="toggleJson()">Hide</button>
+        <!-- Middle: Pipeline Diagram -->
+        <div class="pipeline-diagram-panel hidden" id="pipelineDiagramPanel">
+          <div class="panel-header">Pipeline Diagram</div>
+          <div class="diagram-frame">
+            <img id="pipelineImg" src="pipeline_diagram.png" alt="ETL Pipeline Diagram" />
+          </div>
         </div>
-        <pre id="jsonContent"></pre>
-      </div>
 
-      <div class="card-action">
-        <button class="btn-primary" id="validateBtn" disabled onclick="startValidation()">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9L7 13L15 5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          Validate Pipeline
-        </button>
+        <!-- Right Sidebar: JSON Preview -->
+        <div class="json-sidebar hidden" id="jsonSidebar">
+          <div class="json-expander">
+            <div class="json-expander-header" onclick="toggleJsonExpander()">
+              <span>pipeline.json</span>
+              <svg class="json-chevron" id="jsonChevron" viewBox="0 0 16 16" fill="none">
+                <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="json-expander-body open" id="jsonExpanderBody">
+              <pre id="jsonContent"></pre>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -230,7 +208,7 @@
 
   <!-- ── FOOTER ─────────────────────────────────────── -->
   <footer class="footer">
-    <div>IBM DataStage · Pre-Run Validation Suite · Demo Build v1.0.0</div>
+    <div>BEACON Validation Suite · Demo Build v1.0.0</div>
     <div>Presented at <strong>SIGMOD 2026</strong> · IBM India Pvt. Ltd.</div>
   </footer>
 

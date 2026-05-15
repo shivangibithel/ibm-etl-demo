@@ -71,6 +71,13 @@ body {
   flex-shrink: 0;
 }
 
+.header-logo {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 .brand-text {
   display: flex;
   flex-direction: column;
@@ -313,9 +320,30 @@ body {
 
 .link-btn:hover { color: var(--ibm-blue); }
 
-/* ── Pipeline Diagram ───────────────────────────────── */
-.pipeline-diagram {
-  margin-top: 24px;
+/* ── Three Column Layout ────────────────────────────── */
+.three-column-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr 380px;
+  gap: 20px;
+  min-height: 500px;
+}
+
+/* ── Upload Sidebar (Left) ──────────────────────────── */
+.upload-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.upload-sidebar .upload-zone {
+  padding: 32px 20px;
+}
+
+.upload-sidebar .card-action {
+  margin-top: 0;
+}
+
+.pipeline-status {
   animation: fadeUp 0.5s ease both;
 }
 
@@ -329,58 +357,127 @@ body {
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ibm-green);
-  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: rgba(66, 190, 101, 0.08);
+  border: 1px solid rgba(66, 190, 101, 0.2);
+  border-radius: 4px;
 }
 
-.diagram-frame {
-  border: 1px solid var(--border-hi);
+/* ── Pipeline Diagram Panel (Middle) ────────────────── */
+.pipeline-diagram-panel {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
+  background: var(--bg-02);
   overflow: hidden;
+  animation: fadeUp 0.5s ease both;
+}
+
+.panel-header {
+  padding: 12px 16px;
+  background: var(--bg-03);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.pipeline-diagram-panel .diagram-frame {
+  flex: 1;
+  border: none;
+  border-radius: 0;
+  overflow: auto;
   position: relative;
   background: var(--bg-02);
-  max-height: 420px;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 20px;
 }
 
-.diagram-frame img {
+.pipeline-diagram-panel .diagram-frame img {
   width: 100%;
-  max-height: 420px;
+  height: auto;
   object-fit: contain;
   display: block;
 }
 
-.diagram-overlay {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
-  background: rgba(0,0,0,0.65);
-  border: 1px solid var(--border-hi);
-  border-radius: 3px;
-  padding: 4px 10px;
+/* ── JSON Sidebar (Right) ───────────────────────────── */
+.json-sidebar {
+  display: flex;
+  flex-direction: column;
+  animation: fadeUp 0.5s ease both;
+}
+
+.json-expander {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-01);
+  overflow: hidden;
+  height: 100%;
+}
+
+.json-expander-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg-03);
+  border-bottom: 1px solid var(--border);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.json-expander-header:hover {
+  background: var(--bg-04);
+}
+
+.json-chevron {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s;
   color: var(--text-muted);
 }
 
-.file-meta {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  flex-wrap: wrap;
+.json-chevron.open {
+  transform: rotate(180deg);
 }
 
-.meta-pill {
+.json-expander-body {
+  flex: 1;
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.3s ease;
+}
+
+.json-expander-body.open {
+  max-height: 100%;
+  overflow: auto;
+}
+
+.json-expander-body pre {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--text-secondary);
-  background: var(--bg-03);
-  border: 1px solid var(--border);
-  padding: 3px 10px;
-  border-radius: 2px;
+  color: #1A3A6B;
+  background: #F0F4FF;
+  padding: 16px;
+  margin: 0;
+  overflow: auto;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  height: 100%;
 }
 
 /* ── JSON Preview ───────────────────────────────────── */

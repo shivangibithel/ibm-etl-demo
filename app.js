@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   IBM DataStage — Pre-Run Validation Suite
+   BEACON Validation Suite
    app.js — Demo Orchestration Logic
    ═══════════════════════════════════════════════════════ */
 
@@ -94,8 +94,9 @@ function revisePipeline() {
   document.getElementById('preExecAction').innerHTML = '';
 
   // Re-show upload zone for a new file
-  document.getElementById('pipelineDiagram').classList.add('hidden');
-  document.getElementById('jsonPreview').classList.add('hidden');
+  document.getElementById('pipelineStatus').classList.add('hidden');
+  document.getElementById('pipelineDiagramPanel').classList.add('hidden');
+  document.getElementById('jsonSidebar').classList.add('hidden');
   document.getElementById('validateBtn').disabled = true;
 
   // Scroll back to upload section
@@ -129,31 +130,27 @@ function skipToPreExec() {
 }
 
 function renderLoadedFile(file, data) {
-  // Show diagram
-  const diag = document.getElementById('pipelineDiagram');
-  diag.classList.remove('hidden');
+  // Show pipeline status
+  const status = document.getElementById('pipelineStatus');
+  status.classList.remove('hidden');
   document.getElementById('loadedFileName').textContent = file.name;
+
+  // Show pipeline diagram panel
+  const diagramPanel = document.getElementById('pipelineDiagramPanel');
+  diagramPanel.classList.remove('hidden');
 
   // Try to load bundled diagram image
   const img = document.getElementById('pipelineImg');
   img.onerror = () => {
     // If no image file, show a generated SVG placeholder
-    document.getElementById('diagramOverlay').textContent = 'pipeline_diagram.png (place your image here)';
     img.src = generatePlaceholderDataURI();
   };
 
-  // Meta pills
-  const nodes  = countKeys(data, 'node');
-  const stages = countKeys(data, 'stage');
-  document.getElementById('metaNodes').textContent  = `${nodes || '—'} nodes`;
-  document.getElementById('metaStages').textContent = `${stages || '—'} stages`;
-  document.getElementById('metaSize').textContent   = `${(file.size / 1024).toFixed(1)} KB`;
-
-  // JSON preview
-  const preview = document.getElementById('jsonPreview');
-  preview.classList.remove('hidden');
+  // Show JSON sidebar
+  const jsonSidebar = document.getElementById('jsonSidebar');
+  jsonSidebar.classList.remove('hidden');
   document.getElementById('jsonContent').textContent =
-    JSON.stringify(data, null, 2).slice(0, 3000) + (file.size > 3000 ? '\n… (truncated)' : '');
+    JSON.stringify(data, null, 2);
 
   // Enable button
   document.getElementById('validateBtn').disabled = false;
@@ -165,12 +162,11 @@ function countKeys(obj, keyword) {
   return matches ? matches.length : 0;
 }
 
-function toggleJson() {
-  const pre  = document.getElementById('jsonContent');
-  const btn  = document.getElementById('toggleJsonBtn');
-  const show = pre.style.display === 'none';
-  pre.style.display    = show ? 'block' : 'none';
-  btn.textContent      = show ? 'Hide' : 'Show';
+function toggleJsonExpander() {
+  const body = document.getElementById('jsonExpanderBody');
+  const chevron = document.getElementById('jsonChevron');
+  body.classList.toggle('open');
+  chevron.classList.toggle('open');
 }
 
 // ── Placeholder SVG pipeline diagram ────────────────────
@@ -200,7 +196,7 @@ function generatePlaceholderDataURI() {
       </marker>
     </defs>
     <!-- Label -->
-    <text x="440" y="256" fill="#A8A8A8" font-size="11" text-anchor="middle" letter-spacing="2">IBM DATASTAGE PIPELINE — PLACEHOLDER DIAGRAM</text>
+    <text x="440" y="256" fill="#A8A8A8" font-size="11" text-anchor="middle" letter-spacing="2">BEACON PIPELINE — PLACEHOLDER DIAGRAM</text>
   </svg>`;
 
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
