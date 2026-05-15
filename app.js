@@ -77,7 +77,7 @@ function revisePipeline() {
   revisedPipelineLoaded = true;
 
   // Hide & clear all downstream sections
-  ['section-validation', 'section-val-report', 'section-preexec', 'section-preexec-report', 'section-run'].forEach(id => {
+  ['section-validation', 'section-val-report', 'section-preexec', 'section-run'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('hidden');
   });
@@ -107,11 +107,6 @@ function revisePipeline() {
   const valReportAction = document.getElementById('valReportAction');
   if (valReportAction) valReportAction.innerHTML = '';
   
-  const preExecReportContent = document.getElementById('preExecReportContent');
-  if (preExecReportContent) preExecReportContent.innerHTML = '';
-  
-  const preExecAction = document.getElementById('preExecAction');
-  if (preExecAction) preExecAction.innerHTML = '';
 
   // Re-show upload zone for a new file
   const fileInfoSection = document.getElementById('fileInfoSection');
@@ -170,8 +165,8 @@ function renderRevisedFile(file, data) {
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8L6 11L13 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         Compile Pipeline
       </button>
-      <button class="btn-secondary" style="width: 100%; margin-top: 8px; padding: 10px 16px; font-size: 13px;" onclick="skipToPreExec()">
-        Skip Compilation → Pre-Execution Checks
+      <button class="btn-compile" style="width: 100%; margin-top: 8px; padding: 10px 16px; font-size: 13px;" onclick="skipToPreExec()">
+        Skip Compilation → Generate Pre-Execution Checks
       </button>
     `;
   }
@@ -342,116 +337,18 @@ const VALIDATION_STEPS = BEACON_STAGES;
 // ── Pre-Execution steps data ─────────────────────────────────
 const PRE_EXEC_STEPS = [
   {
-    title: 'Target Column Lineage',
-    desc: 'Target Column Lineage Generator',
+    title: 'Column Lineage',
+    desc: 'Column Lineage Generator',
     outputType: 'json',
     output: {
-      lineage_path: [
-        {
-          stage: "stage5",
-          column: "ORDER_AMOUNT_SUM",
-          column_type: "DECIMAL",
-          transformation_type: "PASS_THROUGH",
-          dependencies: ["ORDER_AMOUNT_SUM"],
-          transformation: "trans_8"
-        },
-        {
-          stage: "stage5",
-          column: "ORDER_DATE",
-          column_type: "VARCHAR",
-          transformation_type: "PASS_THROUGH",
-          dependencies: ["ORDER_DATE"],
-          transformation: "trans_7"
-        },
-        {
-          stage: "stage4",
-          column: "ORDER_AMOUNT_SUM",
-          column_type: "DECIMAL",
-          logic: "SUM(ORDER_AMOUNT)",
-          transformation_type: "TRANSFORM",
-          dependencies: ["ORDER_AMOUNT"],
-          constraints: ["NOT NULL", "CHECK >= 0"],
-          transformation: "trans_6"
-        },
-        {
-          stage: "stage4",
-          column: "ORDER_DATE",
-          column_type: "VARCHAR",
-          transformation_type: "PASS_THROUGH",
-          dependencies: ["ORDER_DATE"],
-          constraints: ["NOT NULL"],
-          transformation: "trans_5"
-        },
-        {
-          stage: "stage3",
-          column: "ORDER_AMOUNT",
-          column_type: "DECIMAL",
-          logic: "ORIGINAL_PRICE - DISCOUNT_AMOUNT",
-          transformation_type: "TRANSFORM",
-          dependencies: ["ORIGINAL_PRICE", "DISCOUNT_AMOUNT"],
-          constraints: ["NOT NULL", "CHECK >= 0"],
-          transformation: "trans_4"
-        },
-        {
-          stage: "stage3",
-          column: "ORDER_DATE",
-          column_type: "VARCHAR",
-          transformation_type: "PASS_THROUGH",
-          dependencies: ["ORDER_DATE"],
-          constraints: ["NOT NULL"],
-          transformation: "trans_3"
-        },
-        {
-          stage: "stage2",
-          column: "DISCOUNT_AMOUNT",
-          column_type: "DECIMAL",
-          logic: "ORIGINAL_PRICE*DISCOUNT_PERCENTAGE/100",
-          transformation_type: "TRANSFORM",
-          dependencies: ["ORIGINAL_PRICE", "DISCOUNT_PERCENTAGE"],
-          constraints: ["NOT NULL", "CHECK >= 0"],
-          transformation: "trans_2"
-        },
-        {
-          stage: "stage2",
-          column: "ORDER_DATE",
-          column_type: "VARCHAR",
-          transformation_type: "PASS_THROUGH",
-          dependencies: ["ORDER_DATE"],
-          constraints: ["NOT NULL"],
-          transformation: "trans_1"
-        },
-        {
-          stage: "stage1",
-          column: "DISCOUNT_PERCENTAGE",
-          column_type: "VARCHAR",
-          is_source: true,
-          constraints: ["NOT NULL", "CHECK >= 0"]
-        },
-        {
-          stage: "stage1",
-          column: "ORDER_DATE",
-          column_type: "VARCHAR",
-          is_source: true,
-          constraints: ["NOT NULL"]
-        },
-        {
-          stage: "stage1",
-          column: "ORIGINAL_PRICE",
-          column_type: "VARCHAR",
-          is_source: true,
-          constraints: ["NOT NULL", "CHECK >= 0"]
-        }
-      ],
+      lineage_path: [],
       source_columns: [
-        "ORDERS.DISCOUNT_PERCENTAGE",
-        "ORDERS.ORDER_DATE",
-        "ORDERS.ORIGINAL_PRICE"
       ]
     }
   },
   {
-    title: 'Data Quality Alert',
-    desc: 'Column Constraint Identifier & Data Quality Alert Generator',
+    title: 'Data Issues Alerts',
+    desc: 'Column Constraint Identifier & Data Issues Alert Generator',
     outputType: 'json',
     output: {
       issues: [
@@ -471,44 +368,12 @@ const PRE_EXEC_STEPS = [
           description: "DISCOUNT_AMOUNT is calculated as ORIGINAL_PRICE * DISCOUNT_PERCENTAGE / 100. If ORIGINAL_PRICE or DISCOUNT_PERCENTAGE is negative, DISCOUNT_AMOUNT will be negative, violating the CHECK >= 0 constraint in stage2.",
           sql_validation: "SELECT COUNT(*) as occurrence_count FROM ORDERS WHERE DECIMAL(ORIGINAL_PRICE, 10, 2) < 0 OR DECIMAL(DISCOUNT_PERCENTAGE, 5, 2) < 0 FETCH FIRST 100 ROWS ONLY"
         },
-        {
-          issue_type: "data_quality_issue",
-          stage: "stage1",
-          column: "DISCOUNT_PERCENTAGE",
-          source_columns: ["DISCOUNT_PERCENTAGE"],
-          description: "Checking for non-numeric values in DISCOUNT_PERCENTAGE that could cause conversion errors downstream.",
-          sql_validation: "SELECT COUNT(*) as occurrence_count FROM ORDERS WHERE REGEXP_LIKE(DISCOUNT_PERCENTAGE, '[^0-9.]') = 1 FETCH FIRST 100 ROWS ONLY"
-        },
-        {
-          issue_type: "data_quality_issue",
-          stage: "stage1",
-          column: "ORIGINAL_PRICE",
-          source_columns: ["ORIGINAL_PRICE"],
-          description: "Checking for non-numeric values in ORIGINAL_PRICE that could cause conversion errors downstream.",
-          sql_validation: "SELECT COUNT(*) as occurrence_count FROM ORDERS WHERE REGEXP_LIKE(ORIGINAL_PRICE, '[^0-9.]') = 1 FETCH FIRST 100 ROWS ONLY"
-        },
-        {
-          issue_type: "null_constraint_violation",
-          stage: "stage4",
-          column: "ORDER_DATE",
-          source_columns: ["ORDER_DATE"],
-          description: "ORDER_DATE is passed through from stage1 to stage4. If ORDER_DATE is NULL in stage1, it will violate the NOT NULL constraint in stage4.",
-          sql_validation: "SELECT COUNT(*) as occurrence_count FROM ORDERS WHERE ORDER_DATE IS NULL FETCH FIRST 100 ROWS ONLY"
-        },
-        {
-          issue_type: "range_constraint_violation",
-          stage: "stage3",
-          column: "ORDER_AMOUNT",
-          source_columns: ["ORIGINAL_PRICE", "DISCOUNT_PERCENTAGE"],
-          description: "ORDER_AMOUNT is calculated as ORIGINAL_PRICE - DISCOUNT_AMOUNT. If DISCOUNT_AMOUNT is greater than ORIGINAL_PRICE, ORDER_AMOUNT will be negative, violating the CHECK >= 0 constraint in stage3.",
-          sql_validation: "SELECT COUNT(*) as occurrence_count FROM ORDERS WHERE DECIMAL(ORIGINAL_PRICE, 10, 2) * DECIMAL(DISCOUNT_PERCENTAGE, 5, 2) / 100 > DECIMAL(ORIGINAL_PRICE, 10, 2) FETCH FIRST 100 ROWS ONLY"
-        }
       ]
     }
   },
   {
-    title: 'Infrastructure Alert',
-    desc: 'Infrastructure Alert',
+    title: 'Infrastructure Issues Alert',
+    desc: 'Infrastructure Issues Alert',
     outputType: 'json',
     output: {
       issues: [
@@ -562,69 +427,6 @@ const VALIDATION_CHECKS = [
     status: 'warn',
     description: 'POS and ECOM sales are merged using FULL OUTER JOIN on order_id, which may duplicate revenue if these are overlapping fact streams',
     remediation: 'Verify if POS_Sales and ECOM_Sales are dependent or independent streams. If independent, replace Join_Orders with UNION ALL to avoid duplicate counting. If dependent, add deduplication logic or precedence rules.'
-  },
-];
-
-const PRE_EXEC_CHECKS = [
-  {
-    name: 'Source DB2 Connectivity',
-    detail: '12ms RTT',
-    status: 'pass'
-  },
-  {
-    name: 'Target DW Connectivity',
-    detail: '18ms RTT',
-    status: 'pass'
-  },
-  {
-    name: 'S3 Staging Access',
-    detail: '45ms RTT',
-    status: 'fail',
-    description: 'Unable to establish connection to S3 staging bucket',
-    remediation: 'Verify S3 bucket permissions and network connectivity. Check IAM credentials and security group rules.'
-  },
-  {
-    name: 'PK Uniqueness — ORDERS',
-    detail: '0 duplicates',
-    status: 'pass'
-  },
-  {
-    name: 'FK Integrity — PRODUCT_DIM',
-    detail: '2 violations found',
-    status: 'pass',
-    description: 'Foreign key violations detected in PRODUCT_DIM table',
-    remediation: 'Review and fix the 2 records in ORDERS_FACT that reference non-existent product IDs. Either update the product_id values to valid references or add the missing products to PRODUCT_DIM table.'
-  },
-  {
-    name: 'Null Rate — region_code',
-    detail: '3.47% > 2% threshold',
-    status: 'pass',
-    description: 'The region_code column has a null rate of 3.47%, which exceeds the acceptable threshold of 2%',
-    remediation: 'Investigate why region_code is missing for 3.47% of records. Options: 1) Implement data quality rules at source to ensure region_code is populated, 2) Add default region mapping logic, 3) Filter out records with null region_code if they are not business-critical.'
-  },
-  {
-    name: 'CPU Headroom',
-    detail: '24/32 cores free',
-    status: 'pass'
-  },
-  {
-    name: 'Memory Headroom',
-    detail: '118 GB free',
-    status: 'warn',
-    description: 'Memory usage is approaching threshold limits',
-    remediation: 'Monitor memory usage closely. Consider scaling up resources or optimizing memory-intensive operations.'
-  },
-  {
-    name: 'Scratch Disk',
-    detail: '2.1 TB available',
-    status: 'fail',
-    description: 'Insufficient scratch disk space for large data operations',
-    remediation: 'Free up disk space or provision additional storage. Minimum 3 TB recommended for this pipeline.'
-  },
-  {
-    name: 'No Conflicting Jobs',
-    detail: 'Engine queue clear',
-    status: 'pass'
   },
 ];
 
@@ -1035,7 +837,6 @@ async function runPreExecSteps() {
   }
 
   await delay(500);
-  showPreExecReport();
 }
 
 function showPreExecOutput(idx) {
@@ -1068,79 +869,6 @@ function showPreExecOutput(idx) {
       <div class="step-output">${renderOutput(step)}</div>
     </div>
   `;
-}
-
-// ── Pre-Exec Report ──────────────────────────────────────
-function showPreExecReport() {
-  const sec = document.getElementById('section-preexec-report');
-  sec.classList.remove('hidden');
-  sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-  const pass  = PRE_EXEC_CHECKS.filter(c => c.status === 'pass').length;
-  const warn  = PRE_EXEC_CHECKS.filter(c => c.status === 'warn').length;
-  const fail  = PRE_EXEC_CHECKS.filter(c => c.status === 'fail').length;
-  const total = PRE_EXEC_CHECKS.length;
-
-  const content = document.getElementById('preExecReportContent');
-  content.innerHTML = `
-    <div class="report-summary clickable-kpis">
-      <div class="report-stat stat-pass" onclick="togglePreExecCheckPanel('pass')">
-        <div class="stat-val">${pass}</div><div class="stat-label">PASSED</div>
-      </div>
-      <div class="report-stat stat-fail" onclick="togglePreExecCheckPanel('fail')">
-        <div class="stat-val">${fail}</div><div class="stat-label">FAILED</div>
-      </div>
-      <div class="report-stat stat-warn" onclick="togglePreExecCheckPanel('warn')">
-        <div class="stat-val">${warn}</div><div class="stat-label">WARNINGS</div>
-      </div>
-      <div class="report-stat stat-total" onclick="togglePreExecCheckPanel('all')">
-        <div class="stat-val">${total}</div><div class="stat-label">TOTAL CHECKS</div>
-      </div>
-    </div>
-    <div class="kpi-hint">Click a number to see details</div>
-    <div class="check-panel hidden" id="preExecCheckPanel"></div>
-    <div style="margin-top: 24px; padding: 14px 20px; background: rgba(218,30,40,0.07); border: 1px solid rgba(218,30,40,0.3); border-radius: 6px; font-size: 13px; color: var(--text-primary);">
-      <strong>⚠️ Alert:</strong> Please carefully review all the issues detected in the input data and pipeline environment that could lead to failure at runtime.
-    </div>
-  `;
-
-  // No action buttons - pre-exec report is the final step
-  document.getElementById('preExecAction').innerHTML = '';
-}
-
-let activePreExecCheckFilter = null;
-function togglePreExecCheckPanel(filter) {
-  const panel = document.getElementById('preExecCheckPanel');
-  if (activePreExecCheckFilter === filter) {
-    panel.classList.add('hidden');
-    activePreExecCheckFilter = null;
-    document.querySelectorAll('.report-stat').forEach(s => s.classList.remove('kpi-active'));
-    return;
-  }
-  activePreExecCheckFilter = filter;
-  document.querySelectorAll('.report-stat').forEach(s => s.classList.remove('kpi-active'));
-  const idx = { all: 0, pass: 1, warn: 3, fail: 2 };
-  document.querySelectorAll('.report-stat')[['all','pass','warn','fail'].indexOf(filter)]?.classList.add('kpi-active');
-
-  const filtered = filter === 'all' ? PRE_EXEC_CHECKS : PRE_EXEC_CHECKS.filter(c => c.status === filter);
-  panel.innerHTML = filtered.map(c => {
-    const hasDetails = c.description || c.remediation;
-    return `
-      <div class="report-check-row">
-        <div class="check-icon">${checkIconForStatus(c.status)}</div>
-        <div class="check-name">${c.name}</div>
-        <div class="check-detail">${c.detail}</div>
-        <div class="check-status ${c.status}">${c.status.toUpperCase()}</div>
-      </div>
-      ${hasDetails ? `
-        <div class="check-details-panel" style="margin-left: 40px; padding: 12px 16px; background: rgba(15,98,254,0.03); border-left: 3px solid ${c.status === 'warn' ? '#F1C21B' : '#FA4D56'}; margin-bottom: 12px; border-radius: 4px;">
-          ${c.description ? `<p style="margin: 0 0 8px 0; font-size: 13px; color: var(--text-primary);"><strong>Description:</strong> ${c.description}</p>` : ''}
-          ${c.remediation ? `<p style="margin: 0; font-size: 13px; color: var(--text-secondary);"><strong>Remediation:</strong> ${c.remediation}</p>` : ''}
-        </div>
-      ` : ''}
-    `;
-  }).join('');
-  panel.classList.remove('hidden');
 }
 
 
