@@ -424,14 +424,14 @@ const VALIDATION_CHECKS = [
   { name: 'Stage Type Recognition',      detail: '8/8 stages recognised',      status: 'pass' },
   { name: 'Column Type Compatibility',   detail: '22 columns checked',         status: 'pass' },
   {
-    name: 'Schema Presence Check',
-    detail: 'Returns_Source has no schema',
+    name: 'Semantic Attribute Collision',
+    detail: 'Incompatible semantics used in GROUP_BY',
     status: 'warn',
-    description: 'The Returns_Source stage is missing schema definition, which prevents proper type checking and validation',
-    remediation: 'Add explicit schema definition to Returns_Source stage with column names and types. This ensures data quality validation and prevents runtime type errors.'
+    description: 'Both POS and ECOM sales have a "channel" attribute, which is later used in aggregation',
+    remediation: '"channel" may represent different concepts in each source. Aggregating or grouping by it may mix incompatible dimensions, producing misleading results.'
   },
   {
-    name: 'Join Type — Join_Returns',
+    name: 'Invalid Join with Returns data',
     detail: 'FULL OUTER should be LEFT',
     status: 'fail',
     description: 'Sales orders are joined with returns using FULL OUTER JOIN, which can create fake sales records from return-only rows',
@@ -441,8 +441,8 @@ const VALIDATION_CHECKS = [
   { name: 'Expression Validity',         detail: '2/2 expressions parseable',  status: 'pass' },
   { name: 'Sink Node Reachability',      detail: 'FACT_DAILY_SALES reachable', status: 'pass' },
   {
-    name: 'Join Semantics — Join_Orders',
-    detail: 'FULL OUTER on fact streams',
+    name: 'Revenue Inflation from Join Semantics',
+    detail: 'FULL OUTER on sales streams',
     status: 'warn',
     description: 'POS and ECOM sales are merged using FULL OUTER JOIN on order_id, which may duplicate revenue if these are overlapping fact streams',
     remediation: 'Verify if POS_Sales and ECOM_Sales are dependent or independent streams. If independent, replace Join_Orders with UNION ALL to avoid duplicate counting. If dependent, add deduplication logic or precedence rules.'
