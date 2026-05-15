@@ -339,79 +339,195 @@ const BEACON_STAGES = [
 // ── (legacy kept for Pre-Exec flow) ──────────────────────
 const VALIDATION_STEPS = BEACON_STAGES;
 
-// ── Pre-Execution Steps Data ─────────────────────────────
+// ── Pre-Execution steps data ─────────────────────────────────
 const PRE_EXEC_STEPS = [
   {
-    title: 'Data Source Connectivity',
-    desc:  'Testing live connectivity to all source and target systems',
-    outputType: 'list',
-    output: [
-      'DB2 PROD (db2.ibm.internal:50000) → CONNECTED · Latency: 12ms',
-      'Oracle DW (dw.ibm.internal:1521) → CONNECTED · Latency: 18ms',
-      'S3 Staging (s3://ibm-etl-staging) → CONNECTED · Latency: 45ms',
-      'Kafka Broker (kafka.ibm.internal:9092) → CONNECTED',
-      'All 4 connections healthy',
-    ]
-  },
-  {
-    title: 'Data Volume & Null Profiling',
-    desc:  'Sampling source tables for volume estimation and null distribution',
+    title: 'Target Column Lineage',
+    desc: 'Target Column Lineage Generator',
     outputType: 'json',
     output: {
-      source_table: "ORDERS_FACT",
-      row_count_estimate: 4820310,
-      sampled_rows: 50000,
-      columns_profiled: 18,
-      null_rates: {
-        "order_id": "0.00%",
-        "customer_id": "0.02%",
-        "order_ts": "1.14%",
-        "amount": "0.00%",
-        "region_code": "3.47%"
-      },
-      anomalies_detected: ["region_code null rate (3.47%) exceeds threshold of 2%"]
+      lineage_path: [
+        {
+          stage: "stage5",
+          column: "ORDER_AMOUNT_SUM",
+          column_type: "DECIMAL",
+          transformation_type: "PASS_THROUGH",
+          dependencies: ["ORDER_AMOUNT_SUM"],
+          transformation: "trans_8"
+        },
+        {
+          stage: "stage5",
+          column: "ORDER_DATE",
+          column_type: "VARCHAR",
+          transformation_type: "PASS_THROUGH",
+          dependencies: ["ORDER_DATE"],
+          transformation: "trans_7"
+        },
+        {
+          stage: "stage4",
+          column: "ORDER_AMOUNT_SUM",
+          column_type: "DECIMAL",
+          logic: "SUM(ORDER_AMOUNT)",
+          transformation_type: "TRANSFORM",
+          dependencies: ["ORDER_AMOUNT"],
+          constraints: ["NOT NULL", "CHECK >= 0"],
+          transformation: "trans_6"
+        },
+        {
+          stage: "stage4",
+          column: "ORDER_DATE",
+          column_type: "VARCHAR",
+          transformation_type: "PASS_THROUGH",
+          dependencies: ["ORDER_DATE"],
+          constraints: ["NOT NULL"],
+          transformation: "trans_5"
+        },
+        {
+          stage: "stage3",
+          column: "ORDER_AMOUNT",
+          column_type: "DECIMAL",
+          logic: "ORIGINAL_PRICE - DISCOUNT_AMOUNT",
+          transformation_type: "TRANSFORM",
+          dependencies: ["ORIGINAL_PRICE", "DISCOUNT_AMOUNT"],
+          constraints: ["NOT NULL", "CHECK >= 0"],
+          transformation: "trans_4"
+        },
+        {
+          stage: "stage3",
+          column: "ORDER_DATE",
+          column_type: "VARCHAR",
+          transformation_type: "PASS_THROUGH",
+          dependencies: ["ORDER_DATE"],
+          constraints: ["NOT NULL"],
+          transformation: "trans_3"
+        },
+        {
+          stage: "stage2",
+          column: "DISCOUNT_AMOUNT",
+          column_type: "DECIMAL",
+          logic: "ORIGINAL_PRICE*DISCOUNT_PERCENTAGE/100",
+          transformation_type: "TRANSFORM",
+          dependencies: ["ORIGINAL_PRICE", "DISCOUNT_PERCENTAGE"],
+          constraints: ["NOT NULL", "CHECK >= 0"],
+          transformation: "trans_2"
+        },
+        {
+          stage: "stage2",
+          column: "ORDER_DATE",
+          column_type: "VARCHAR",
+          transformation_type: "PASS_THROUGH",
+          dependencies: ["ORDER_DATE"],
+          constraints: ["NOT NULL"],
+          transformation: "trans_1"
+        },
+        {
+          stage: "stage1",
+          column: "DISCOUNT_PERCENTAGE",
+          column_type: "VARCHAR",
+          is_source: true,
+          constraints: ["NOT NULL", "CHECK >= 0"]
+        },
+        {
+          stage: "stage1",
+          column: "ORDER_DATE",
+          column_type: "VARCHAR",
+          is_source: true,
+          constraints: ["NOT NULL"]
+        },
+        {
+          stage: "stage1",
+          column: "ORIGINAL_PRICE",
+          column_type: "VARCHAR",
+          is_source: true,
+          constraints: ["NOT NULL", "CHECK >= 0"]
+        }
+      ],
+      source_columns: [
+        "ORDERS.DISCOUNT_PERCENTAGE",
+        "ORDERS.ORDER_DATE",
+        "ORDERS.ORIGINAL_PRICE"
+      ]
     }
   },
   {
-    title: 'Constraint & Referential Integrity',
-    desc:  'Verifying primary key uniqueness and foreign key consistency',
+    title: 'Data Quality Alert',
+    desc: 'Column Constraint Identifier & Data Quality Alert Generator',
     outputType: 'json',
     output: {
-      pk_uniqueness: { ORDERS_FACT: "PASS", CUSTOMER_DIM: "PASS", PRODUCT_DIM: "PASS" },
-      fk_violations: { "ORDERS_FACT → CUSTOMER_DIM": 0, "ORDERS_FACT → PRODUCT_DIM": 2 },
-      duplicate_rows: 0,
-      total_violations: 2,
-      severity: "COMPLETE"
+      issues: [
+        {
+          issue_type: "null_constraint_violation",
+          stage: "stage2",
+          column: "DISCOUNT_AMOUNT",
+          source_columns: ["DISCOUNT_PERCENTAGE", "ORIGINAL_PRICE"],
+          description: "The DISCOUNT_AMOUNT column in stage2 is derived from ORIGINAL_PRICE and DISCOUNT_PERCENTAGE. If either of these source columns is NULL, DISCOUNT_AMOUNT will be NULL, violating the NOT NULL constraint in stage2.",
+          sql_validation: "SELECT COUNT(*) as occurrence_count FROM ORDERS WHERE DISCOUNT_PERCENTAGE IS NULL OR ORIGINAL_PRICE IS NULL FETCH FIRST 100 ROWS ONLY"
+        },
+        {
+          issue_type: "range_constraint_violation",
+          stage: "stage2",
+          column: "DISCOUNT_AMOUNT",
+          source_columns: ["DISCOUNT_PERCENTAGE", "ORIGINAL_PRICE"],
+          description: "DISCOUNT_AMOUNT is calculated as ORIGINAL_PRICE * DISCOUNT_PERCENTAGE / 100. If ORIGINAL_PRICE or DISCOUNT_PERCENTAGE is negative, DISCOUNT_AMOUNT will be negative, violating the CHECK >= 0 constraint in stage2.",
+          sql_validation: "SELECT COUNT(*) as occurrence_count FROM ORDERS WHERE DECIMAL(ORIGINAL_PRICE, 10, 2) < 0 OR DECIMAL(DISCOUNT_PERCENTAGE, 5, 2) < 0 FETCH FIRST 100 ROWS ONLY"
+        },
+        {
+          issue_type: "data_quality_issue",
+          stage: "stage1",
+          column: "DISCOUNT_PERCENTAGE",
+          source_columns: ["DISCOUNT_PERCENTAGE"],
+          description: "Checking for non-numeric values in DISCOUNT_PERCENTAGE that could cause conversion errors downstream.",
+          sql_validation: "SELECT COUNT(*) as occurrence_count FROM ORDERS WHERE REGEXP_LIKE(DISCOUNT_PERCENTAGE, '[^0-9.]') = 1 FETCH FIRST 100 ROWS ONLY"
+        },
+        {
+          issue_type: "data_quality_issue",
+          stage: "stage1",
+          column: "ORIGINAL_PRICE",
+          source_columns: ["ORIGINAL_PRICE"],
+          description: "Checking for non-numeric values in ORIGINAL_PRICE that could cause conversion errors downstream.",
+          sql_validation: "SELECT COUNT(*) as occurrence_count FROM ORDERS WHERE REGEXP_LIKE(ORIGINAL_PRICE, '[^0-9.]') = 1 FETCH FIRST 100 ROWS ONLY"
+        },
+        {
+          issue_type: "null_constraint_violation",
+          stage: "stage4",
+          column: "ORDER_DATE",
+          source_columns: ["ORDER_DATE"],
+          description: "ORDER_DATE is passed through from stage1 to stage4. If ORDER_DATE is NULL in stage1, it will violate the NOT NULL constraint in stage4.",
+          sql_validation: "SELECT COUNT(*) as occurrence_count FROM ORDERS WHERE ORDER_DATE IS NULL FETCH FIRST 100 ROWS ONLY"
+        },
+        {
+          issue_type: "range_constraint_violation",
+          stage: "stage3",
+          column: "ORDER_AMOUNT",
+          source_columns: ["ORIGINAL_PRICE", "DISCOUNT_PERCENTAGE"],
+          description: "ORDER_AMOUNT is calculated as ORIGINAL_PRICE - DISCOUNT_AMOUNT. If DISCOUNT_AMOUNT is greater than ORIGINAL_PRICE, ORDER_AMOUNT will be negative, violating the CHECK >= 0 constraint in stage3.",
+          sql_validation: "SELECT COUNT(*) as occurrence_count FROM ORDERS WHERE DECIMAL(ORIGINAL_PRICE, 10, 2) * DECIMAL(DISCOUNT_PERCENTAGE, 5, 2) / 100 > DECIMAL(ORIGINAL_PRICE, 10, 2) FETCH FIRST 100 ROWS ONLY"
+        }
+      ]
     }
   },
   {
-    title: 'Infrastructure Resource Check',
-    desc:  'Evaluating compute, memory, and I/O availability on DataStage engine',
-    outputType: 'list',
-    output: [
-      'DataStage Engine Node: engine-01.ibm.internal → ONLINE',
-      'Available CPU: 24 cores (of 32) → SUFFICIENT',
-      'Available Memory: 118 GB (of 256 GB) → SUFFICIENT',
-      'Scratch Disk Space: 2.1 TB available → SUFFICIENT',
-      'Parallel degree: 8 partitions recommended',
-      'Conductor node: healthy · No active job conflicts',
-    ]
-  },
-  {
-    title: 'Execution Readiness Summary',
-    desc:  'Aggregating all pre-execution results into a go/no-go decision',
+    title: 'Infrastructure Alert',
+    desc: 'Infrastructure Alert',
     outputType: 'json',
     output: {
-      schema_validation: "PASS",
-      connectivity: "PASS",
-      data_volume: "PASS",
-      null_profiling: "WARNING",
-      constraint_checks: "WARNING",
-      infrastructure: "PASS",
-      decision: "PROCEED WITH CAUTION",
-      notes: [
-        "2 FK violations in ORDERS_FACT — review before full load",
-        "region_code null rate slightly above threshold"
+      issues: [
+        {
+          issue_type: "datastage_resource_constraints",
+          description: "Check for DataStage service resource constraints and infrastructure issues."
+        },
+        {
+          issue_type: "source_table_reference",
+          description: "Validate that source tables referenced in pipeline exist."
+        },
+        {
+          issue_type: "target_table_reference",
+          description: "Validate that target tables referenced in pipeline exist or can be created."
+        },
+        {
+          issue_type: "connection_stability",
+          description: "Detect potential connection stability issues (lost connections, unexpected closures)."
+        }
       ]
     }
   }
