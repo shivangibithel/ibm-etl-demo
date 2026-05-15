@@ -341,8 +341,59 @@ const PRE_EXEC_STEPS = [
     desc: 'Column Lineage Generator',
     outputType: 'json',
     output: {
-      lineage_path: [],
-      source_columns: [
+      lineage_path: [
+        {
+          "stage": "stage5",
+          "column": "channel",
+          "column_type": "VARCHAR",
+          "transformation_type": "PASS_THROUGH",
+          "dependencies": [
+            "channel"
+          ],
+          "pass_through_range": "stage1 to stage5",
+          "transformation": "trans_8"
+        },
+        {
+          "stage": "stage5",
+          "column": "order_date",
+          "column_type": "VARCHAR",
+          "transformation_type": "PASS_THROUGH",
+          "dependencies": [
+            "order_date"
+          ],
+          "pass_through_range": "stage1 to stage5",
+          "transformation": "trans_7"
+        },
+        {
+          "stage": "stage6",
+          "column": "channel",
+          "column_type": "VARCHAR",
+          "is_source": true
+        },
+        {
+          "stage": "stage6",
+          "column": "order_date",
+          "column_type": "VARCHAR",
+          "is_source": true
+        },
+        {
+          "stage": "stage7",
+          "column": "channel",
+          "column_type": "VARCHAR",
+          "is_source": true
+        },
+        {
+          "stage": "stage7",
+          "column": "order_date",
+          "column_type": "VARCHAR",
+          "is_source": true
+        }
+      ],
+      "source_columns": [
+        "ECOM_Source.channel",
+        "ECOM_Source.order_date",
+        "POS_Source.channel",
+        "POS_Source.order_date"
       ]
     }
   },
@@ -354,19 +405,23 @@ const PRE_EXEC_STEPS = [
       issues: [
         {
           issue_type: "null_constraint_violation",
-          stage: "stage2",
-          column: "DISCOUNT_AMOUNT",
-          source_columns: ["DISCOUNT_PERCENTAGE", "ORIGINAL_PRICE"],
-          description: "The DISCOUNT_AMOUNT column in stage2 is derived from ORIGINAL_PRICE and DISCOUNT_PERCENTAGE. If either of these source columns is NULL, DISCOUNT_AMOUNT will be NULL, violating the NOT NULL constraint in stage2.",
-          sql_validation: "SELECT COUNT(*) as occurrence_count FROM ORDERS WHERE DISCOUNT_PERCENTAGE IS NULL OR ORIGINAL_PRICE IS NULL FETCH FIRST 100 ROWS ONLY"
+          stage: "stage5",
+          column: "channel",
+          source_columns: ["channel"],
+          description: "NULL values in 'channel' column can cause pipeline failure as it is passed through multiple stages.",
+          connectivity_code: "dsn = (f\"DATABASE={database_name};HOSTNAME={database_hostname};PORT={database_port};PROTOCOL={database_protocol};UID={database_userid};PWD={database_password};SECURITY={database_security};\")\nconn = ibm_db.connect(dsn, \"\", \"\")",
+          sql_validation: "SELECT channel, COUNT(*) as occurrence_count FROM POS_Source WHERE channel IS NULL GROUP BY channel FETCH FIRST 100 ROWS ONLY;",
+          remediation: "Ensure that 'channel' column in POS_Source table does not contain NULL values. Consider adding NOT NULL constraint or handling NULL values appropriately in the ETL pipeline."
         },
         {
-          issue_type: "range_constraint_violation",
-          stage: "stage2",
-          column: "DISCOUNT_AMOUNT",
-          source_columns: ["DISCOUNT_PERCENTAGE", "ORIGINAL_PRICE"],
-          description: "DISCOUNT_AMOUNT is calculated as ORIGINAL_PRICE * DISCOUNT_PERCENTAGE / 100. If ORIGINAL_PRICE or DISCOUNT_PERCENTAGE is negative, DISCOUNT_AMOUNT will be negative, violating the CHECK >= 0 constraint in stage2.",
-          sql_validation: "SELECT COUNT(*) as occurrence_count FROM ORDERS WHERE DECIMAL(ORIGINAL_PRICE, 10, 2) < 0 OR DECIMAL(DISCOUNT_PERCENTAGE, 5, 2) < 0 FETCH FIRST 100 ROWS ONLY"
+          issue_type: "invalid_format",
+          stage: "stage5",
+          column: "order_date",
+          source_columns: ["order_date"],
+          description: "Invalid date format in 'order_date' column can cause data type mismatches or failures in date-based calculations.",
+          connectivity_code: "dsn = (f\"DATABASE={database_name};HOSTNAME={database_hostname};PORT={database_port};PROTOCOL={database_protocol};UID={database_userid};PWD={database_password};SECURITY={database_security};\")\nconn = ibm_db.connect(dsn, \"\", \"\")",
+          sql_validation: "SELECT order_date, COUNT(*) as occurrence_count FROM POS_Source WHERE order_date IS NOT NULL AND REGEXP_LIKE(order_date, '^[0-9]{2}-[0-9]{2}-[0-9]{4}$') = 0 GROUP BY order_date FETCH FIRST 100 ROWS ONLY;",
+          remediation: "Validate and standardize the date format in 'order_date' column to prevent data type mismatches or failures in date-based calculations."
         },
       ]
     }
