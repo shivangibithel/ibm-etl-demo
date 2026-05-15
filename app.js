@@ -79,34 +79,69 @@ function revisePipeline() {
   // Hide & clear all downstream sections
   ['section-validation', 'section-val-report', 'section-preexec', 'section-preexec-report', 'section-run'].forEach(id => {
     const el = document.getElementById(id);
-    el.classList.add('hidden');
+    if (el) el.classList.add('hidden');
   });
 
   // Clear dynamically injected content
-  document.getElementById('stepsList').innerHTML = '';
-  document.getElementById('stepsList').classList.add('hidden');
-  document.getElementById('spinnerBlock').classList.remove('hidden');
+  const stepsList = document.getElementById('stepsList');
+  if (stepsList) {
+    stepsList.innerHTML = '';
+    stepsList.classList.add('hidden');
+  }
+  
+  const spinnerBlock = document.getElementById('spinnerBlock');
+  if (spinnerBlock) spinnerBlock.classList.remove('hidden');
 
-  document.getElementById('preExecStepsList').innerHTML = '';
-  document.getElementById('preExecStepsList').classList.add('hidden');
-  document.getElementById('preExecSpinner').classList.add('hidden');
+  const preExecStepsList = document.getElementById('preExecStepsList');
+  if (preExecStepsList) {
+    preExecStepsList.innerHTML = '';
+    preExecStepsList.classList.add('hidden');
+  }
+  
+  const preExecSpinner = document.getElementById('preExecSpinner');
+  if (preExecSpinner) preExecSpinner.classList.add('hidden');
 
-  document.getElementById('valReportContent').innerHTML = '';
-  document.getElementById('valReportAction').innerHTML = '';
-  document.getElementById('preExecReportContent').innerHTML = '';
-  document.getElementById('preExecAction').innerHTML = '';
+  const valReportContent = document.getElementById('valReportContent');
+  if (valReportContent) valReportContent.innerHTML = '';
+  
+  const valReportAction = document.getElementById('valReportAction');
+  if (valReportAction) valReportAction.innerHTML = '';
+  
+  const preExecReportContent = document.getElementById('preExecReportContent');
+  if (preExecReportContent) preExecReportContent.innerHTML = '';
+  
+  const preExecAction = document.getElementById('preExecAction');
+  if (preExecAction) preExecAction.innerHTML = '';
 
   // Re-show upload zone for a new file
-  document.getElementById('fileInfoSection').classList.add('hidden');
-  document.getElementById('pipelineDiagramPanel').classList.add('hidden');
-  document.getElementById('jsonSidebar').classList.add('hidden');
-  document.getElementById('validateBtn').disabled = true;
+  const fileInfoSection = document.getElementById('fileInfoSection');
+  if (fileInfoSection) fileInfoSection.classList.add('hidden');
+  
+  const pipelineDiagramPanel = document.getElementById('pipelineDiagramPanel');
+  if (pipelineDiagramPanel) pipelineDiagramPanel.classList.add('hidden');
+  
+  const jsonSidebar = document.getElementById('jsonSidebar');
+  if (jsonSidebar) jsonSidebar.classList.add('hidden');
+  
+  const validateBtn = document.getElementById('validateBtn');
+  if (validateBtn) validateBtn.disabled = true;
 
   // Scroll back to upload section
-  document.getElementById('section-upload').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const uploadSection = document.getElementById('section-upload');
+  if (uploadSection) {
+    uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   // Trigger file input for a new file
-  fileInput.click();
+  // Use setTimeout to ensure the click happens after any UI updates and scroll
+  setTimeout(() => {
+    if (fileInput) {
+      console.log('Triggering file input dialog...');
+      fileInput.click();
+    } else {
+      console.error('File input element not found!');
+    }
+  }, 300);
 }
 
 // After a revised file is loaded, show it AND the two-option action bar
