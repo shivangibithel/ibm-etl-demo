@@ -159,41 +159,6 @@
       <div class="card-action" id="preExecAction"></div>
     </section>
 
-    <!-- STEP 7: ETL Run -->
-    <section class="card hidden" id="section-run">
-      <div class="card-header">
-        <span class="step-num">06</span>
-        <div>
-          <h2>Production Pipeline Execution</h2>
-          <p class="card-sub">All checks passed. The pipeline is cleared for production execution.</p>
-        </div>
-      </div>
-      <div class="run-ready-banner">
-        <div class="run-icon">
-          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="32" cy="32" r="30" stroke="#42BE65" stroke-width="2"/>
-            <path d="M22 32L28 38L42 24" stroke="#42BE65" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <div>
-          <h3>All Checks Passed</h3>
-          <p>Schema validation · Data quality · Infrastructure readiness · Constraint checks</p>
-        </div>
-      </div>
-      <div class="card-action">
-        <button class="btn-run" onclick="runPipeline()">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 4L16 10L5 16V4Z" fill="white"/></svg>
-          Execute ETL Pipeline
-        </button>
-      </div>
-      <div class="run-output hidden" id="runOutput">
-        <div class="run-progress-header">
-          <span class="dot-live"></span>
-          Pipeline executing in production environment…
-        </div>
-        <div class="run-log" id="runLog"></div>
-      </div>
-    </section>
 
   </main>
 

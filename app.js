@@ -18,15 +18,18 @@ const fileInput  = document.getElementById('fileInput');
 uploadZone.addEventListener('click', e => {
   // If the click came from the browse button, it calls fileInput.click()
   // directly — don't double-trigger here.
-  if (e.target.closest('.link-btn')) return;
+  if (e.target.closest('.btn-browse')) return;
   fileInput.click();
 });
 
-// The "browse files" link-button inside the zone
-document.getElementById('browseLinkBtn').addEventListener('click', e => {
-  e.stopPropagation(); // prevent bubbling to uploadZone
-  fileInput.click();
-});
+// The "browse files" button inside the zone
+const browseLinkBtn = document.getElementById('browseLinkBtn');
+if (browseLinkBtn) {
+  browseLinkBtn.addEventListener('click', e => {
+    e.stopPropagation(); // prevent bubbling to uploadZone
+    fileInput.click();
+  });
+}
 
 uploadZone.addEventListener('dragover', e => {
   e.preventDefault();
@@ -69,7 +72,7 @@ function handleFile(file, isRevise = false) {
   reader.readAsText(file);
 }
 
-// ── Revise Pipeline: reset all downstream sections ───────
+// ── Revise Pipeline: trigger file upload immediately ───────
 function revisePipeline() {
   revisedPipelineLoaded = true;
 
@@ -111,17 +114,32 @@ function renderRevisedFile(file, data) {
   revisedPipelineLoaded = false;
   renderLoadedFile(file, data);
 
-  // Replace the validate button area with two choices
-  const action = document.querySelector('#section-upload .card-action');
-  action.innerHTML = `
-    <button class="btn-primary" id="validateBtn" onclick="startValidation()">
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9L7 13L15 5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Validate Again
-    </button>
-    <button class="btn-secondary" onclick="skipToPreExec()">
-      Skip Validation → Pre-Execution Checks
-    </button>
-  `;
+  // Show message and two-button action bar in the sidebar
+  const fileInfoSection = document.getElementById('fileInfoSection');
+  
+  // Add a message below the file info
+  let msgDiv = document.getElementById('fixPipelineMsg');
+  if (!msgDiv) {
+    msgDiv = document.createElement('div');
+    msgDiv.id = 'fixPipelineMsg';
+    msgDiv.style.cssText = 'padding: 12px; background: rgba(15,98,254,0.05); border: 1px solid rgba(15,98,254,0.2); border-radius: 4px; font-size: 12px; color: var(--text-primary); margin-top: 12px;';
+    fileInfoSection.appendChild(msgDiv);
+  }
+  msgDiv.innerHTML = '✓ Fixed pipeline uploaded. Choose an option below:';
+
+  // Update the compile button section with two choices
+  const compileSection = document.querySelector('.sidebar-section:last-child');
+  if (compileSection) {
+    compileSection.innerHTML = `
+      <button class="btn-compile" onclick="startValidation()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8L6 11L13 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Compile Pipeline
+      </button>
+      <button class="btn-secondary" style="width: 100%; margin-top: 8px; padding: 10px 16px; font-size: 13px;" onclick="skipToPreExec()">
+        Skip Compilation → Pre-Execution Checks
+      </button>
+    `;
+  }
 }
 
 // Skip validation and jump straight to pre-execution checks
@@ -271,13 +289,13 @@ const BEACON_STAGES = [
   },
   {
     title: 'Detect Mismatch',
-    badge: 'warning',
+    badge: 'complete',
     outputType: 'text',
     output: 'Input ETL Pipeline validated against the inferred Expected behavior.<br><strong>Three silent defects</strong> detected!'
   },
   {
     title: 'Diagnostics & Fixes',
-    badge: 'warning',
+    badge: 'complete',
     outputType: 'text',
     output: 'Detailed report generated for the <strong>three silent defects</strong> along with their suggested fixes.'
   }
@@ -370,25 +388,87 @@ const VALIDATION_CHECKS = [
   { name: 'DAG Acyclicity',              detail: 'No cyclic dependencies',     status: 'pass' },
   { name: 'Stage Type Recognition',      detail: '8/8 stages recognised',      status: 'pass' },
   { name: 'Column Type Compatibility',   detail: '22 columns checked',         status: 'pass' },
-  { name: 'Schema Presence Check',       detail: 'Returns_Source has no schema', status: 'warn' },
-  { name: 'Join Type — Join_Returns',    detail: 'FULL OUTER should be LEFT',  status: 'fail' },
+  {
+    name: 'Schema Presence Check',
+    detail: 'Returns_Source has no schema',
+    status: 'warn',
+    description: 'The Returns_Source stage is missing schema definition, which prevents proper type checking and validation',
+    remediation: 'Add explicit schema definition to Returns_Source stage with column names and types. This ensures data quality validation and prevents runtime type errors.'
+  },
+  {
+    name: 'Join Type — Join_Returns',
+    detail: 'FULL OUTER should be LEFT',
+    status: 'fail',
+    description: 'Sales orders are joined with returns using FULL OUTER JOIN, which can create fake sales records from return-only rows',
+    remediation: 'Change join type from FULL OUTER JOIN to LEFT OUTER JOIN in Join_Returns stage. Returns are adjustments to sales, not independent transactions, so only sales records should drive the join.'
+  },
   { name: 'Runtime Parameters Resolved', detail: 'All params resolved',        status: 'pass' },
   { name: 'Expression Validity',         detail: '2/2 expressions parseable',  status: 'pass' },
   { name: 'Sink Node Reachability',      detail: 'FACT_DAILY_SALES reachable', status: 'pass' },
-  { name: 'Join Semantics — Join_Orders',detail: 'FULL OUTER on fact streams', status: 'warn' },
+  {
+    name: 'Join Semantics — Join_Orders',
+    detail: 'FULL OUTER on fact streams',
+    status: 'warn',
+    description: 'POS and ECOM sales are merged using FULL OUTER JOIN on order_id, which may duplicate revenue if these are overlapping fact streams',
+    remediation: 'Verify if POS_Sales and ECOM_Sales are dependent or independent streams. If independent, replace Join_Orders with UNION ALL to avoid duplicate counting. If dependent, add deduplication logic or precedence rules.'
+  },
 ];
 
 const PRE_EXEC_CHECKS = [
-  { name: 'Source DB2 Connectivity',     detail: '12ms RTT',                 status: 'pass' },
-  { name: 'Target DW Connectivity',      detail: '18ms RTT',                 status: 'pass' },
-  { name: 'S3 Staging Access',           detail: '45ms RTT',                 status: 'pass' },
-  { name: 'PK Uniqueness — ORDERS',      detail: '0 duplicates',             status: 'pass' },
-  { name: 'FK Integrity — PRODUCT_DIM',  detail: '2 violations found',       status: 'warn' },
-  { name: 'Null Rate — region_code',     detail: '3.47% > 2% threshold',     status: 'warn' },
-  { name: 'CPU Headroom',                detail: '24/32 cores free',         status: 'pass' },
-  { name: 'Memory Headroom',             detail: '118 GB free',              status: 'pass' },
-  { name: 'Scratch Disk',                detail: '2.1 TB available',         status: 'pass' },
-  { name: 'No Conflicting Jobs',         detail: 'Engine queue clear',       status: 'pass' },
+  {
+    name: 'Source DB2 Connectivity',
+    detail: '12ms RTT',
+    status: 'pass'
+  },
+  {
+    name: 'Target DW Connectivity',
+    detail: '18ms RTT',
+    status: 'pass'
+  },
+  {
+    name: 'S3 Staging Access',
+    detail: '45ms RTT',
+    status: 'pass'
+  },
+  {
+    name: 'PK Uniqueness — ORDERS',
+    detail: '0 duplicates',
+    status: 'pass'
+  },
+  {
+    name: 'FK Integrity — PRODUCT_DIM',
+    detail: '2 violations found',
+    status: 'warn',
+    description: 'Foreign key violations detected in PRODUCT_DIM table',
+    remediation: 'Review and fix the 2 records in ORDERS_FACT that reference non-existent product IDs. Either update the product_id values to valid references or add the missing products to PRODUCT_DIM table.'
+  },
+  {
+    name: 'Null Rate — region_code',
+    detail: '3.47% > 2% threshold',
+    status: 'warn',
+    description: 'The region_code column has a null rate of 3.47%, which exceeds the acceptable threshold of 2%',
+    remediation: 'Investigate why region_code is missing for 3.47% of records. Options: 1) Implement data quality rules at source to ensure region_code is populated, 2) Add default region mapping logic, 3) Filter out records with null region_code if they are not business-critical.'
+  },
+  {
+    name: 'CPU Headroom',
+    detail: '24/32 cores free',
+    status: 'pass'
+  },
+  {
+    name: 'Memory Headroom',
+    detail: '118 GB free',
+    status: 'pass'
+  },
+  {
+    name: 'Scratch Disk',
+    detail: '2.1 TB available',
+    status: 'pass'
+  },
+  {
+    name: 'No Conflicting Jobs',
+    detail: 'Engine queue clear',
+    status: 'pass'
+  },
 ];
 
 // ── Icon helpers ─────────────────────────────────────────
@@ -617,64 +697,26 @@ function showValidationReport() {
     </div>
     <div class="kpi-hint">Click a number to see details</div>
     <div class="check-panel hidden" id="checkPanel"></div>
-    <div class="defect-section">
-      <div class="defect-section-label">Detected Defects</div>
-      ${buildDefectExpander(
-        'fail', '❌ Defect — Invalid Join with Returns Data',
-        `<p class="defect-what"><strong>What happened</strong></p>
-         <p>Sales orders were joined with returns using a <code>FULL OUTER JOIN</code> in <code>Join_Returns</code>.</p>`,
-        `<div class="defect-warning-box">⚠ <strong>Invalid join semantics detected</strong><br>Expected join type: LEFT OUTER (Joined Orders ⟕ Returns) in <code>Join_Returns</code></div>`,
-        `<p><strong>Why it's risky</strong></p>
-         <ul class="defect-list">
-           <li>Returns are <strong>adjustments</strong>, not transactions</li>
-           <li>Return-only rows can create <strong>fake sales records</strong> with negative revenue</li>
-           <li>Revenue and margin calculations become unreliable</li>
-         </ul>`,
-        `<ul class="defect-list"><li>Replace FULL OUTER JOIN with LEFT OUTER JOIN in <code>Join_Returns</code></li></ul>`
-      )}
-      ${buildDefectExpander(
-        'warn', '⚠️ Defect — Revenue Inflation from Join Semantics',
-        `<p class="defect-what"><strong>What happened</strong></p>
-         <p>POS and ECOM sales were merged using a <code>FULL OUTER JOIN</code> on <code>order_id</code>, followed by aggregation to compute revenue.</p>`,
-        `<div class="defect-warning-box warn-yellow">⚠ <strong>High-risk fact consolidation detected</strong><br>FULL OUTER JOIN on <code>order_id</code> in <code>Join_Orders</code> may duplicate revenue</div>`,
-        `<p><strong>Why it's risky</strong></p>
-         <ul class="defect-list">
-           <li>POS and ECOM may represent independent or partially overlapping fact streams</li>
-           <li><code>Join_Orders</code> may work only if <code>POS_Sales</code> and <code>ECOM_Sales</code> are dependent</li>
-           <li>Without reconciliation or deduplication, overlapping transactions may be counted multiple times</li>
-           <li>The pipeline succeeds, but reported revenue may be silently overstated</li>
-         </ul>`,
-        `<ul class="defect-list">
-           <li><strong>Dependency Check:</strong> Determine whether <code>POS_Sales</code> and <code>ECOM_Sales</code> are dependent or independent</li>
-           <li><strong>Option 1:</strong> Deduplicate or apply precedence, if dependent</li>
-           <li><strong>Option 2:</strong> If independent, replace <code>Join_Orders</code> with set-union semantics (e.g., <code>UNION ALL</code> or <code>FUNNEL</code>) to avoid duplicate counting</li>
-         </ul>`
-      )}
-      ${buildDefectExpander(
-        'warn', '⚠️ Defect — Semantic Attribute Collision',
-        `<p class="defect-what"><strong>What happened</strong></p>
-         <p>Both <code>POS_Sales</code> and <code>ECOM_Sales</code> have a <code>channel</code> attribute, which is later used in aggregation.</p>`,
-        `<div class="defect-warning-box warn-yellow">⚠ <strong>Semantic collision detected</strong><br>Incompatible semantics used in GROUP BY of <code>Agg_Daily_Net_Sales</code> for attribute <code>channel</code></div>`,
-        `<p><strong>Why it's risky</strong></p>
-         <ul class="defect-list">
-           <li><code>channel</code> may represent different concepts in each source (e.g. store type in POS vs sales medium in ECOM)</li>
-           <li>Aggregating or grouping by it may mix incompatible dimensions, producing misleading results</li>
-         </ul>`,
-        `<ul class="defect-list"><li>Ensure <code>channel</code> in <code>POS_Sales</code> and <code>ECOM_Sales</code> represents the same concept before aggregating</li></ul>`
-      )}
-    </div>
   `;
 
   const action = document.getElementById('valReportAction');
-  action.innerHTML = `
-    <button class="btn-primary" onclick="startPreExec()">
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 9H15M9 3L15 9L9 15" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Proceed to Pre-Execution Checks
-    </button>
-    <button class="btn-secondary" onclick="revisePipeline()">
-      Revise Pipeline
-    </button>
-  `;
+  
+  // Show instructional message if there are warnings or failures
+  if (warn > 0 || fail > 0) {
+    action.innerHTML = `
+      <div style="margin-bottom: 16px; padding: 14px 20px; background: rgba(241,194,27,0.07); border: 1px solid rgba(241,194,27,0.2); border-radius: 6px; font-size: 13px; color: var(--text-primary);">
+        <strong>⚠️ Action Required:</strong> Please review and fix the identified issues in your pipeline. These issues may lead to incorrect results or pipeline failure. Once fixed, upload the corrected pipeline below.
+      </div>
+      <button class="btn-secondary" onclick="revisePipeline()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="margin-right: 6px;">
+          <path d="M8 2v12M8 2l-3 3M8 2l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Upload Fixed Pipeline
+      </button>
+    `;
+  } else {
+    action.innerHTML = '';
+  }
 }
 
 function buildDefectExpander(type, title, what, warningBox, why, fixes) {
@@ -726,7 +768,7 @@ function toggleDefectFix(fixUid) {
 }
 
 let activeCheckFilter = null;
-function toggleCheckPanel(filter) {
+function toggleCheckPanel(filter, checksArray = VALIDATION_CHECKS) {
   const panel = document.getElementById('checkPanel');
   if (activeCheckFilter === filter) {
     panel.classList.add('hidden');
@@ -739,15 +781,24 @@ function toggleCheckPanel(filter) {
   const idx = { all: 0, pass: 1, warn: 3, fail: 2 }; // order in grid
   document.querySelectorAll('.report-stat')[['all','pass','warn','fail'].indexOf(filter)]?.classList.add('kpi-active');
 
-  const filtered = filter === 'all' ? VALIDATION_CHECKS : VALIDATION_CHECKS.filter(c => c.status === filter);
-  panel.innerHTML = filtered.map(c => `
-    <div class="report-check-row">
-      <div class="check-icon">${checkIconForStatus(c.status)}</div>
-      <div class="check-name">${c.name}</div>
-      <div class="check-detail">${c.detail}</div>
-      <div class="check-status ${c.status}">${c.status.toUpperCase()}</div>
-    </div>
-  `).join('');
+  const filtered = filter === 'all' ? checksArray : checksArray.filter(c => c.status === filter);
+  panel.innerHTML = filtered.map(c => {
+    const hasDetails = c.description || c.remediation;
+    return `
+      <div class="report-check-row">
+        <div class="check-icon">${checkIconForStatus(c.status)}</div>
+        <div class="check-name">${c.name}</div>
+        <div class="check-detail">${c.detail}</div>
+        <div class="check-status ${c.status}">${c.status.toUpperCase()}</div>
+      </div>
+      ${hasDetails ? `
+        <div class="check-details-panel" style="margin-left: 40px; padding: 12px 16px; background: rgba(15,98,254,0.03); border-left: 3px solid ${c.status === 'warn' ? '#F1C21B' : '#FA4D56'}; margin-bottom: 12px; border-radius: 4px;">
+          ${c.description ? `<p style="margin: 0 0 8px 0; font-size: 13px; color: var(--text-primary);"><strong>Description:</strong> ${c.description}</p>` : ''}
+          ${c.remediation ? `<p style="margin: 0; font-size: 13px; color: var(--text-secondary);"><strong>Remediation:</strong> ${c.remediation}</p>` : ''}
+        </div>
+      ` : ''}
+    `;
+  }).join('');
   panel.classList.remove('hidden');
 }
 
@@ -778,39 +829,101 @@ async function runPreExecSteps() {
   const list = document.getElementById('preExecStepsList');
   list.classList.remove('hidden');
 
+  // Build the two-panel BEACON layout for pre-execution
+  list.innerHTML = `
+    <div class="beacon-layout">
+      <div class="beacon-sidebar" id="preExecBeaconSidebar"></div>
+      <div class="beacon-output-panel" id="preExecBeaconOutputPanel">
+        <div class="beacon-output-placeholder">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="#C6C6C6" stroke-width="1.5"/><path d="M14 20h12M20 14v12" stroke="#C6C6C6" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <p>Select a check to view its output</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const sidebar = document.getElementById('preExecBeaconSidebar');
+
   for (let i = 0; i < PRE_EXEC_STEPS.length; i++) {
     const step = PRE_EXEC_STEPS[i];
-    const el = buildStepEl(step, `pe${i}`, 'running');
-    list.appendChild(el);
-    await delay(1100);
 
-    const id = `step-body-pe${i}`;
-    const header = el.querySelector('.step-item-header');
+    // Build sidebar row in RUNNING state
+    const row = document.createElement('div');
+    row.className = 'beacon-stage-row running';
+    row.id = `preexec-row-${i}`;
+    row.dataset.idx = i;
+    row.innerHTML = `
+      <div class="beacon-stage-status" id="preexec-status-${i}">${iconRunning()}</div>
+      <div class="beacon-stage-info">
+        <span class="beacon-stage-title">${step.title}</span>
+        <span class="beacon-stage-badge running" id="preexec-badge-${i}">RUNNING</span>
+      </div>
+      <span class="beacon-stage-op-tag">O/P</span>
+    `;
+    sidebar.appendChild(row);
 
+    await delay(900);
+
+    // Determine final state
     const hasWarn = step.output && (
       step.output.anomalies_detected?.length ||
       (step.output.fk_violations && Object.values(step.output.fk_violations).some(v => v > 0)) ||
       step.output.severity === 'WARNING'
     );
     const badgeClass = hasWarn ? 'warning' : 'complete';
-    const icon = hasWarn ? iconWarn() : iconComplete();
-    const badgeLabel = hasWarn ? 'WARNING' : 'COMPLETE';
+    const badgeLabel = badgeClass === 'warning' ? 'WARNING' : 'COMPLETE';
+    const icon = badgeClass === 'warning' ? iconWarn() : iconComplete();
 
-    header.innerHTML = `
-      ${icon}
-      <span class="step-item-title">${step.title}</span>
-      <span class="step-badge ${badgeClass}">${badgeLabel}</span>
-      <svg class="step-chevron" id="chev-${id}" viewBox="0 0 16 16" fill="none">
-        <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
-    `;
-    header.setAttribute('onclick', `toggleStep('${id}')`);
-    document.getElementById(id).querySelector('.step-output').innerHTML = renderOutput(step);
-    await delay(350);
+    row.classList.remove('running');
+    row.classList.add(badgeClass);
+    document.getElementById(`preexec-status-${i}`).innerHTML = icon;
+    const badge = document.getElementById(`preexec-badge-${i}`);
+    badge.textContent = badgeLabel;
+    badge.className = `beacon-stage-badge ${badgeClass}`;
+
+    // Make clickable
+    row.onclick = () => showPreExecOutput(i);
+
+    await delay(200);
   }
+
+  // Auto-select first stage
+  showPreExecOutput(0);
 
   await delay(500);
   showPreExecReport();
+}
+
+function showPreExecOutput(idx) {
+  // Highlight active row
+  document.querySelectorAll('#preExecBeaconSidebar .beacon-stage-row').forEach((r, i) => {
+    r.classList.toggle('active', i === idx);
+  });
+
+  const step = PRE_EXEC_STEPS[idx];
+  const panel = document.getElementById('preExecBeaconOutputPanel');
+
+  const hasWarn = step.output && (
+    step.output.anomalies_detected?.length ||
+    (step.output.fk_violations && Object.values(step.output.fk_violations).some(v => v > 0)) ||
+    step.output.severity === 'WARNING'
+  );
+  const badgeClass = hasWarn ? 'warning' : 'complete';
+  const badgeLabel = badgeClass === 'warning' ? 'WARNING' : 'COMPLETE';
+
+  panel.innerHTML = `
+    <div class="beacon-output-header">
+      <div class="beacon-output-title">
+        <span class="beacon-output-step-num">${String(idx + 1).padStart(2, '0')}</span>
+        <span>${step.title}</span>
+      </div>
+      <span class="beacon-stage-badge ${badgeClass}">${badgeLabel}</span>
+    </div>
+    <div class="beacon-output-body">
+      <div class="beacon-output-label">Output</div>
+      <div class="step-output">${renderOutput(step)}</div>
+    </div>
+  `;
 }
 
 // ── Pre-Exec Report ──────────────────────────────────────
@@ -826,126 +939,63 @@ function showPreExecReport() {
 
   const content = document.getElementById('preExecReportContent');
   content.innerHTML = `
-    <div class="report-summary">
-      <div class="report-stat stat-total"><div class="stat-val">${total}</div><div class="stat-label">TOTAL CHECKS</div></div>
-      <div class="report-stat stat-pass"><div class="stat-val">${pass}</div><div class="stat-label">PASSED</div></div>
-      <div class="report-stat stat-warn"><div class="stat-val">${warn}</div><div class="stat-label">WARNINGS</div></div>
-      <div class="report-stat stat-fail"><div class="stat-val">${fail}</div><div class="stat-label">FAILED</div></div>
+    <div class="report-summary clickable-kpis">
+      <div class="report-stat stat-total" onclick="togglePreExecCheckPanel('all')">
+        <div class="stat-val">${total}</div><div class="stat-label">TOTAL CHECKS</div>
+      </div>
+      <div class="report-stat stat-pass" onclick="togglePreExecCheckPanel('pass')">
+        <div class="stat-val">${pass}</div><div class="stat-label">PASSED</div>
+      </div>
+      <div class="report-stat stat-warn" onclick="togglePreExecCheckPanel('warn')">
+        <div class="stat-val">${warn}</div><div class="stat-label">WARNINGS</div>
+      </div>
+      <div class="report-stat stat-fail" onclick="togglePreExecCheckPanel('fail')">
+        <div class="stat-val">${fail}</div><div class="stat-label">FAILED</div>
+      </div>
     </div>
-    <div class="report-checks">
-      ${PRE_EXEC_CHECKS.map((c, i) => `
-        <div class="report-check-row" style="animation-delay:${i * 60}ms">
-          <div class="check-icon">${checkIconForStatus(c.status)}</div>
-          <div class="check-name">${c.name}</div>
-          <div class="check-detail">${c.detail}</div>
-          <div class="check-status ${c.status}">${c.status.toUpperCase()}</div>
-        </div>
-      `).join('')}
-    </div>
-    <div style="margin-top:16px;padding:14px 20px;background:rgba(241,194,27,0.07);border:1px solid rgba(241,194,27,0.2);border-radius:6px;font-size:13px;color:#F1C21B;font-family:var(--font-mono)">
-      ⚠ 2 warnings detected — review FK violations and null rate before proceeding.
-    </div>
+    <div class="kpi-hint">Click a number to see details</div>
+    <div class="check-panel hidden" id="preExecCheckPanel"></div>
   `;
 
-  const action = document.getElementById('preExecAction');
-  action.innerHTML = `
-    <button class="btn-primary" onclick="showRunSection()">
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 4L14 9L4 14V4Z" fill="white"/></svg>
-      Proceed to Pipeline Execution
-    </button>
-  `;
+  // No action buttons - pre-exec report is the final step
+  document.getElementById('preExecAction').innerHTML = '';
 }
 
-// ── Run Section ──────────────────────────────────────────
-function showRunSection() {
-  const sec = document.getElementById('section-run');
-  sec.classList.remove('hidden');
-  sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-const RUN_LOG_LINES = [
-  { t: '00:00:01', cls: 'log-info', msg: 'Initialising DataStage Engine (engine-01.ibm.internal)' },
-  { t: '00:00:02', cls: 'log-info', msg: 'Allocating 8 parallel partitions · 24 CPU cores reserved' },
-  { t: '00:00:03', cls: 'log-ok',   msg: 'SOURCE_DB2 — reading ORDERS_FACT (4,820,310 rows estimated)' },
-  { t: '00:00:04', cls: 'log-info', msg: 'FilterStage — applying predicate: region IN (\'APAC\', \'EMEA\')' },
-  { t: '00:00:05', cls: 'log-ok',   msg: 'FilterStage — 3,218,045 rows passed filter' },
-  { t: '00:00:07', cls: 'log-info', msg: 'JoinStage — joining with CUSTOMER_DIM on customer_id' },
-  { t: '00:00:09', cls: 'log-ok',   msg: 'JoinStage — 3,217,987 rows matched · 58 unmatched (logged)' },
-  { t: '00:00:11', cls: 'log-info', msg: 'AggregateStage — grouping by region, product_category, quarter' },
-  { t: '00:00:14', cls: 'log-ok',   msg: 'AggregateStage — 1,248 aggregate rows produced' },
-  { t: '00:00:15', cls: 'log-info', msg: 'SchemaValidator — validating 34 output columns' },
-  { t: '00:00:16', cls: 'log-ok',   msg: 'SchemaValidator — all columns PASS' },
-  { t: '00:00:17', cls: 'log-info', msg: 'DWConnector — writing to TARGET_DW_TABLE (batch mode)' },
-  { t: '00:00:21', cls: 'log-ok',   msg: '1,248 rows committed to DW · 0 rejected' },
-  { t: '00:00:22', cls: 'log-done', msg: '✓ Pipeline COMPLETE — Total time: 21s · Rows written: 1,248' },
-];
-
-async function runPipeline() {
-  const btn = document.querySelector('.btn-run');
-  btn.disabled = true;
-  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="white" stroke-width="1.5" stroke-dasharray="4 3" style="animation:spin 0.8s linear infinite;transform-origin:center"/></svg> Running…`;
-
-  const output = document.getElementById('runOutput');
-  const log    = document.getElementById('runLog');
-  output.classList.remove('hidden');
-
-  // Update header dot to show running
-  output.querySelector('.run-progress-header').innerHTML =
-    `<span class="dot-live"></span>Pipeline executing in production environment…`;
-
-  for (const line of RUN_LOG_LINES) {
-    await delay(600);
-    const row = document.createElement('div');
-    row.className = 'log-line';
-    row.innerHTML = `<span class="log-time">${line.t}</span><span class="${line.cls}">${line.msg}</span>`;
-    log.appendChild(row);
-    log.scrollTop = log.scrollHeight;
+let activePreExecCheckFilter = null;
+function togglePreExecCheckPanel(filter) {
+  const panel = document.getElementById('preExecCheckPanel');
+  if (activePreExecCheckFilter === filter) {
+    panel.classList.add('hidden');
+    activePreExecCheckFilter = null;
+    document.querySelectorAll('.report-stat').forEach(s => s.classList.remove('kpi-active'));
+    return;
   }
+  activePreExecCheckFilter = filter;
+  document.querySelectorAll('.report-stat').forEach(s => s.classList.remove('kpi-active'));
+  const idx = { all: 0, pass: 1, warn: 3, fail: 2 };
+  document.querySelectorAll('.report-stat')[['all','pass','warn','fail'].indexOf(filter)]?.classList.add('kpi-active');
 
-  // ── Pipeline finished ──────────────────────────────
-  await delay(500);
-
-  // Update the header to "Completed"
-  output.querySelector('.run-progress-header').innerHTML =
-    `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#198038" stroke-width="1.5"/><path d="M4 7L6 9L10 5" stroke="#198038" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-     <span style="color:#198038;font-weight:500">Execution completed successfully</span>`;
-
-  // Update the run button
-  btn.style.background = '#198038';
-  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="white" stroke-width="1.5"/><path d="M6 9L8 11L12 7" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Pipeline Complete`;
-
-  // Show completion banner
-  const section = document.getElementById('section-run');
-  const banner = document.createElement('div');
-  banner.className = 'run-complete-banner';
-  banner.innerHTML = `
-    <div class="complete-icon">
-      <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="26" cy="26" r="24" stroke="#198038" stroke-width="2"/>
-        <path d="M16 26L22 32L36 18" stroke="#198038" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </div>
-    <div>
-      <h3>Pipeline Execution Successful</h3>
-      <p>All stages completed · 0 errors · 1,248 rows written to TARGET_DW_TABLE</p>
-    </div>
-  `;
-  section.querySelector('.card-action').after(banner);
-
-  // Show execution stats
-  const stats = document.createElement('div');
-  stats.className = 'run-stats-row';
-  stats.innerHTML = `
-    <div class="run-stat-item"><span>TOTAL RUNTIME</span><strong>21s</strong></div>
-    <div class="run-stat-item"><span>ROWS PROCESSED</span><strong>4,820,310</strong></div>
-    <div class="run-stat-item"><span>ROWS WRITTEN</span><strong>1,248</strong></div>
-    <div class="run-stat-item"><span>ROWS REJECTED</span><strong>0</strong></div>
-    <div class="run-stat-item"><span>PARTITIONS USED</span><strong>8</strong></div>
-    <div class="run-stat-item"><span>TARGET</span><strong>DB2 DW · PROD</strong></div>
-  `;
-  banner.after(stats);
-  stats.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  const filtered = filter === 'all' ? PRE_EXEC_CHECKS : PRE_EXEC_CHECKS.filter(c => c.status === filter);
+  panel.innerHTML = filtered.map(c => {
+    const hasDetails = c.description || c.remediation;
+    return `
+      <div class="report-check-row">
+        <div class="check-icon">${checkIconForStatus(c.status)}</div>
+        <div class="check-name">${c.name}</div>
+        <div class="check-detail">${c.detail}</div>
+        <div class="check-status ${c.status}">${c.status.toUpperCase()}</div>
+      </div>
+      ${hasDetails ? `
+        <div class="check-details-panel" style="margin-left: 40px; padding: 12px 16px; background: rgba(15,98,254,0.03); border-left: 3px solid ${c.status === 'warn' ? '#F1C21B' : '#FA4D56'}; margin-bottom: 12px; border-radius: 4px;">
+          ${c.description ? `<p style="margin: 0 0 8px 0; font-size: 13px; color: var(--text-primary);"><strong>Description:</strong> ${c.description}</p>` : ''}
+          ${c.remediation ? `<p style="margin: 0; font-size: 13px; color: var(--text-secondary);"><strong>Remediation:</strong> ${c.remediation}</p>` : ''}
+        </div>
+      ` : ''}
+    `;
+  }).join('');
+  panel.classList.remove('hidden');
 }
+
 
 // ── Utilities ────────────────────────────────────────────
 function delay(ms) {
