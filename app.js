@@ -97,31 +97,31 @@ function toggleJson() {
 // ── Placeholder SVG pipeline diagram ────────────────────
 function generatePlaceholderDataURI() {
   const svg = `<svg viewBox="0 0 880 280" xmlns="http://www.w3.org/2000/svg" style="font-family:'IBM Plex Mono',monospace">
-    <rect width="880" height="280" fill="#111117"/>
+    <rect width="880" height="280" fill="#F0F4FF"/>
     <!-- Nodes -->
     ${makePipelineNode(60,  120, 'SOURCE\nDB2', '#0F62FE')}
-    ${makePipelineNode(230, 80,  'TRANSFORM\nFilter', '#1192E8')}
-    ${makePipelineNode(230, 170, 'TRANSFORM\nJoin', '#1192E8')}
-    ${makePipelineNode(420, 120, 'AGGREGATE\nGroup By', '#8A3FFC')}
-    ${makePipelineNode(600, 80,  'VALIDATE\nSchema', '#009D9A')}
-    ${makePipelineNode(600, 170, 'VALIDATE\nTypes', '#009D9A')}
-    ${makePipelineNode(780, 120, 'TARGET\nDW Table', '#42BE65')}
+    ${makePipelineNode(230, 80,  'TRANSFORM\nFilter', '#0072C3')}
+    ${makePipelineNode(230, 170, 'TRANSFORM\nJoin', '#0072C3')}
+    ${makePipelineNode(420, 120, 'AGGREGATE\nGroup By', '#6929C4')}
+    ${makePipelineNode(600, 80,  'VALIDATE\nSchema', '#005D5D')}
+    ${makePipelineNode(600, 170, 'VALIDATE\nTypes', '#005D5D')}
+    ${makePipelineNode(780, 120, 'TARGET\nDW Table', '#198038')}
     <!-- Edges -->
-    <line x1="142" y1="120" x2="192" y2="100" stroke="#2A2A3D" stroke-width="2" marker-end="url(#arr)"/>
-    <line x1="142" y1="120" x2="192" y2="180" stroke="#2A2A3D" stroke-width="2" marker-end="url(#arr)"/>
-    <line x1="312" y1="90"  x2="372" y2="120" stroke="#2A2A3D" stroke-width="2" marker-end="url(#arr)"/>
-    <line x1="312" y1="180" x2="372" y2="135" stroke="#2A2A3D" stroke-width="2" marker-end="url(#arr)"/>
-    <line x1="502" y1="110" x2="562" y2="90"  stroke="#2A2A3D" stroke-width="2" marker-end="url(#arr)"/>
-    <line x1="502" y1="130" x2="562" y2="175" stroke="#2A2A3D" stroke-width="2" marker-end="url(#arr)"/>
-    <line x1="682" y1="90"  x2="742" y2="115" stroke="#2A2A3D" stroke-width="2" marker-end="url(#arr)"/>
-    <line x1="682" y1="175" x2="742" y2="130" stroke="#2A2A3D" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="142" y1="120" x2="192" y2="100" stroke="#A8A8A8" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="142" y1="120" x2="192" y2="180" stroke="#A8A8A8" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="312" y1="90"  x2="372" y2="120" stroke="#A8A8A8" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="312" y1="180" x2="372" y2="135" stroke="#A8A8A8" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="502" y1="110" x2="562" y2="90"  stroke="#A8A8A8" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="502" y1="130" x2="562" y2="175" stroke="#A8A8A8" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="682" y1="90"  x2="742" y2="115" stroke="#A8A8A8" stroke-width="2" marker-end="url(#arr)"/>
+    <line x1="682" y1="175" x2="742" y2="130" stroke="#A8A8A8" stroke-width="2" marker-end="url(#arr)"/>
     <defs>
       <marker id="arr" markerWidth="8" markerHeight="8" refX="4" refY="3" orient="auto">
-        <path d="M0,0 L0,6 L8,3 z" fill="#3B3B58"/>
+        <path d="M0,0 L0,6 L8,3 z" fill="#A8A8A8"/>
       </marker>
     </defs>
     <!-- Label -->
-    <text x="440" y="256" fill="#44445A" font-size="11" text-anchor="middle" letter-spacing="2">IBM DATASTAGE PIPELINE — PLACEHOLDER DIAGRAM</text>
+    <text x="440" y="256" fill="#A8A8A8" font-size="11" text-anchor="middle" letter-spacing="2">IBM DATASTAGE PIPELINE — PLACEHOLDER DIAGRAM</text>
   </svg>`;
 
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
@@ -129,10 +129,10 @@ function generatePlaceholderDataURI() {
 
 function makePipelineNode(cx, cy, label, color) {
   const lines = label.split('\n');
-  const rects = `<rect x="${cx-40}" y="${cy-26}" width="82" height="52" rx="5" fill="#161620" stroke="${color}" stroke-width="1.5"/>`;
+  const rects = `<rect x="${cx-40}" y="${cy-26}" width="82" height="52" rx="5" fill="#FFFFFF" stroke="${color}" stroke-width="1.5"/>`;
   const texts = lines.map((l, i) => {
     const isFirst = i === 0;
-    return `<text x="${cx}" y="${cy + (isFirst ? -8 : 12)}" fill="${isFirst ? color : '#A8A8C0'}" font-size="${isFirst ? 9 : 10}" text-anchor="middle" font-weight="${isFirst ? 500 : 400}" letter-spacing="1">${l}</text>`;
+    return `<text x="${cx}" y="${cy + (isFirst ? -8 : 12)}" fill="${isFirst ? color : '#393939'}" font-size="${isFirst ? 9 : 10}" text-anchor="middle" font-weight="${isFirst ? 600 : 400}" letter-spacing="1">${l}</text>`;
   }).join('');
   return rects + texts;
 }
@@ -629,12 +629,17 @@ const RUN_LOG_LINES = [
 ];
 
 async function runPipeline() {
-  document.querySelector('.btn-run').disabled = true;
-  document.querySelector('.btn-run').textContent = 'Running…';
+  const btn = document.querySelector('.btn-run');
+  btn.disabled = true;
+  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="white" stroke-width="1.5" stroke-dasharray="4 3" style="animation:spin 0.8s linear infinite;transform-origin:center"/></svg> Running…`;
 
   const output = document.getElementById('runOutput');
   const log    = document.getElementById('runLog');
   output.classList.remove('hidden');
+
+  // Update header dot to show running
+  output.querySelector('.run-progress-header').innerHTML =
+    `<span class="dot-live"></span>Pipeline executing in production environment…`;
 
   for (const line of RUN_LOG_LINES) {
     await delay(600);
@@ -644,6 +649,50 @@ async function runPipeline() {
     log.appendChild(row);
     log.scrollTop = log.scrollHeight;
   }
+
+  // ── Pipeline finished ──────────────────────────────
+  await delay(500);
+
+  // Update the header to "Completed"
+  output.querySelector('.run-progress-header').innerHTML =
+    `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#198038" stroke-width="1.5"/><path d="M4 7L6 9L10 5" stroke="#198038" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+     <span style="color:#198038;font-weight:500">Execution completed successfully</span>`;
+
+  // Update the run button
+  btn.style.background = '#198038';
+  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7" stroke="white" stroke-width="1.5"/><path d="M6 9L8 11L12 7" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Pipeline Complete`;
+
+  // Show completion banner
+  const section = document.getElementById('section-run');
+  const banner = document.createElement('div');
+  banner.className = 'run-complete-banner';
+  banner.innerHTML = `
+    <div class="complete-icon">
+      <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="26" cy="26" r="24" stroke="#198038" stroke-width="2"/>
+        <path d="M16 26L22 32L36 18" stroke="#198038" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div>
+      <h3>Pipeline Execution Successful</h3>
+      <p>All stages completed · 0 errors · 1,248 rows written to TARGET_DW_TABLE</p>
+    </div>
+  `;
+  section.querySelector('.card-action').after(banner);
+
+  // Show execution stats
+  const stats = document.createElement('div');
+  stats.className = 'run-stats-row';
+  stats.innerHTML = `
+    <div class="run-stat-item"><span>TOTAL RUNTIME</span><strong>21s</strong></div>
+    <div class="run-stat-item"><span>ROWS PROCESSED</span><strong>4,820,310</strong></div>
+    <div class="run-stat-item"><span>ROWS WRITTEN</span><strong>1,248</strong></div>
+    <div class="run-stat-item"><span>ROWS REJECTED</span><strong>0</strong></div>
+    <div class="run-stat-item"><span>PARTITIONS USED</span><strong>8</strong></div>
+    <div class="run-stat-item"><span>TARGET</span><strong>DB2 DW · PROD</strong></div>
+  `;
+  banner.after(stats);
+  stats.scrollIntoView({ behavior: 'smooth', block: 'end' });
 }
 
 // ── Utilities ────────────────────────────────────────────
