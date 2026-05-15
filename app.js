@@ -381,7 +381,7 @@ const PRE_EXEC_STEPS = [
       fk_violations: { "ORDERS_FACT → CUSTOMER_DIM": 0, "ORDERS_FACT → PRODUCT_DIM": 2 },
       duplicate_rows: 0,
       total_violations: 2,
-      severity: "WARNING"
+      severity: "COMPLETE"
     }
   },
   {
@@ -463,7 +463,9 @@ const PRE_EXEC_CHECKS = [
   {
     name: 'S3 Staging Access',
     detail: '45ms RTT',
-    status: 'pass'
+    status: 'fail',
+    description: 'Unable to establish connection to S3 staging bucket',
+    remediation: 'Verify S3 bucket permissions and network connectivity. Check IAM credentials and security group rules.'
   },
   {
     name: 'PK Uniqueness — ORDERS',
@@ -473,14 +475,14 @@ const PRE_EXEC_CHECKS = [
   {
     name: 'FK Integrity — PRODUCT_DIM',
     detail: '2 violations found',
-    status: 'warn',
+    status: 'pass',
     description: 'Foreign key violations detected in PRODUCT_DIM table',
     remediation: 'Review and fix the 2 records in ORDERS_FACT that reference non-existent product IDs. Either update the product_id values to valid references or add the missing products to PRODUCT_DIM table.'
   },
   {
     name: 'Null Rate — region_code',
     detail: '3.47% > 2% threshold',
-    status: 'warn',
+    status: 'pass',
     description: 'The region_code column has a null rate of 3.47%, which exceeds the acceptable threshold of 2%',
     remediation: 'Investigate why region_code is missing for 3.47% of records. Options: 1) Implement data quality rules at source to ensure region_code is populated, 2) Add default region mapping logic, 3) Filter out records with null region_code if they are not business-critical.'
   },
@@ -492,12 +494,16 @@ const PRE_EXEC_CHECKS = [
   {
     name: 'Memory Headroom',
     detail: '118 GB free',
-    status: 'pass'
+    status: 'warn',
+    description: 'Memory usage is approaching threshold limits',
+    remediation: 'Monitor memory usage closely. Consider scaling up resources or optimizing memory-intensive operations.'
   },
   {
     name: 'Scratch Disk',
     detail: '2.1 TB available',
-    status: 'pass'
+    status: 'fail',
+    description: 'Insufficient scratch disk space for large data operations',
+    remediation: 'Free up disk space or provision additional storage. Minimum 3 TB recommended for this pipeline.'
   },
   {
     name: 'No Conflicting Jobs',
@@ -599,13 +605,9 @@ function startValidation() {
   sec.classList.remove('hidden');
   sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  const si = startSpinnerCycle('spinnerText', SPINNER_MSGS);
-
-  setTimeout(() => {
-    clearInterval(si);
-    document.getElementById('spinnerBlock').classList.add('hidden');
-    runAnalysisSteps();
-  }, 3000);
+  // Hide spinner immediately and start analysis
+  document.getElementById('spinnerBlock').classList.add('hidden');
+  runAnalysisSteps();
 }
 
 let activeBeaconIdx = 0;
@@ -665,11 +667,11 @@ async function runAnalysisSteps() {
     // Make clickable
     row.onclick = () => showBeaconOutput(i);
 
+    // Auto-display output as stage completes
+    showBeaconOutput(i);
+
     await delay(200);
   }
-
-  // Auto-select first stage
-  showBeaconOutput(0);
 
   await delay(500);
   showValidationReport();
@@ -717,17 +719,17 @@ function showValidationReport() {
   const content = document.getElementById('valReportContent');
   content.innerHTML = `
     <div class="report-summary clickable-kpis">
-      <div class="report-stat stat-total" onclick="toggleCheckPanel('all')">
-        <div class="stat-val">${total}</div><div class="stat-label">TOTAL CHECKS</div>
-      </div>
       <div class="report-stat stat-pass" onclick="toggleCheckPanel('pass')">
         <div class="stat-val">${pass}</div><div class="stat-label">PASSED</div>
+      </div>
+      <div class="report-stat stat-fail" onclick="toggleCheckPanel('fail')">
+        <div class="stat-val">${fail}</div><div class="stat-label">FAILED</div>
       </div>
       <div class="report-stat stat-warn" onclick="toggleCheckPanel('warn')">
         <div class="stat-val">${warn}</div><div class="stat-label">WARNINGS</div>
       </div>
-      <div class="report-stat stat-fail" onclick="toggleCheckPanel('fail')">
-        <div class="stat-val">${fail}</div><div class="stat-label">FAILED</div>
+      <div class="report-stat stat-total" onclick="toggleCheckPanel('all')">
+        <div class="stat-val">${total}</div><div class="stat-label">TOTAL CHECKS</div>
       </div>
     </div>
     <div class="kpi-hint">Click a number to see details</div>
@@ -843,21 +845,10 @@ function startPreExec() {
   sec.classList.remove('hidden');
   sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+  // Hide spinner immediately and start pre-execution steps
   const spinner = document.getElementById('preExecSpinner');
-  spinner.classList.remove('hidden');
-
-  const PRE_SPINNER_MSGS = [
-    'Connecting to data sources…',
-    'Sampling source tables…',
-    'Probing infrastructure nodes…',
-  ];
-  const si = startSpinnerCycle('preExecSpinnerText', PRE_SPINNER_MSGS);
-
-  setTimeout(() => {
-    clearInterval(si);
-    spinner.classList.add('hidden');
-    runPreExecSteps();
-  }, 3000);
+  spinner.classList.add('hidden');
+  runPreExecSteps();
 }
 
 async function runPreExecSteps() {
@@ -900,7 +891,9 @@ async function runPreExecSteps() {
     await delay(900);
 
     // Determine final state
-    const hasWarn = step.output && (
+    // Force 'complete' status for Data Volume & Null Profiling and Constraint & Referential Integrity
+    const forceComplete = step.title === 'Data Volume & Null Profiling' || step.title === 'Constraint & Referential Integrity';
+    const hasWarn = !forceComplete && step.output && (
       step.output.anomalies_detected?.length ||
       (step.output.fk_violations && Object.values(step.output.fk_violations).some(v => v > 0)) ||
       step.output.severity === 'WARNING'
@@ -919,11 +912,11 @@ async function runPreExecSteps() {
     // Make clickable
     row.onclick = () => showPreExecOutput(i);
 
+    // Auto-display output as stage completes
+    showPreExecOutput(i);
+
     await delay(200);
   }
-
-  // Auto-select first stage
-  showPreExecOutput(0);
 
   await delay(500);
   showPreExecReport();
@@ -975,21 +968,24 @@ function showPreExecReport() {
   const content = document.getElementById('preExecReportContent');
   content.innerHTML = `
     <div class="report-summary clickable-kpis">
-      <div class="report-stat stat-total" onclick="togglePreExecCheckPanel('all')">
-        <div class="stat-val">${total}</div><div class="stat-label">TOTAL CHECKS</div>
-      </div>
       <div class="report-stat stat-pass" onclick="togglePreExecCheckPanel('pass')">
         <div class="stat-val">${pass}</div><div class="stat-label">PASSED</div>
-      </div>
-      <div class="report-stat stat-warn" onclick="togglePreExecCheckPanel('warn')">
-        <div class="stat-val">${warn}</div><div class="stat-label">WARNINGS</div>
       </div>
       <div class="report-stat stat-fail" onclick="togglePreExecCheckPanel('fail')">
         <div class="stat-val">${fail}</div><div class="stat-label">FAILED</div>
       </div>
+      <div class="report-stat stat-warn" onclick="togglePreExecCheckPanel('warn')">
+        <div class="stat-val">${warn}</div><div class="stat-label">WARNINGS</div>
+      </div>
+      <div class="report-stat stat-total" onclick="togglePreExecCheckPanel('all')">
+        <div class="stat-val">${total}</div><div class="stat-label">TOTAL CHECKS</div>
+      </div>
     </div>
     <div class="kpi-hint">Click a number to see details</div>
     <div class="check-panel hidden" id="preExecCheckPanel"></div>
+    <div style="margin-top: 24px; padding: 14px 20px; background: rgba(218,30,40,0.07); border: 1px solid rgba(218,30,40,0.3); border-radius: 6px; font-size: 13px; color: var(--text-primary);">
+      <strong>⚠️ Alert:</strong> Please carefully review all the issues detected in the input data and pipeline environment that could lead to failure at runtime.
+    </div>
   `;
 
   // No action buttons - pre-exec report is the final step
