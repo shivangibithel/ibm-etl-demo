@@ -425,7 +425,7 @@ function renderOutput(step) {
   if (step.outputType === 'text') {
     return `<p class="beacon-text-output">${step.output}</p>`;
   }
-  return `<pre>${JSON.stringify(step.output, null, 2)}</pre>`;
+  return `<div class="beacon-json-scroll"><pre>${JSON.stringify(step.output, null, 2)}</pre></div>`;
 }
 
 // ── Build step DOM ───────────────────────────────────────

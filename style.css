@@ -151,8 +151,8 @@ body {
 }
 
 .hero-inner {
-  max-width: 1100px;
-  margin: 0 auto;
+  margin: 0;
+  padding: 0 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -197,13 +197,12 @@ body {
 /* ── Workspace ──────────────────────────────────────── */
 .workspace {
   flex: 1;
-  max-width: 1100px;
   width: 100%;
-  margin: 0 auto;
-  padding: 40px 40px 80px;
+  margin: 10;
+  padding: 20px 20px 40px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 10;
 }
 
 /* ── Card ───────────────────────────────────────────── */
@@ -221,8 +220,8 @@ body {
 
 .full-height-card {
   padding: 0;
-  height: calc(100vh - 200px);
-  min-height: 600px;
+  height: auto;
+  min-height: 0;
 }
 
 @keyframes cardIn {
@@ -331,7 +330,7 @@ body {
   display: grid;
   grid-template-columns: 220px 1fr 320px;
   gap: 0;
-  height: 100%;
+  align-items: start;
 }
 
 /* ── Upload Sidebar (Left) ──────────────────────────── */
@@ -502,7 +501,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 300px;
+  min-height: 100px;
 }
 
 .pipeline-diagram-panel .diagram-frame img {
@@ -521,6 +520,20 @@ body {
 
 .json-tree-view {
   padding: 16px;
+  max-height: 260px;
+  overflow: hidden;
+  position: relative;
+}
+
+.json-tree-view::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  height: 48px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(250, 250, 250, 0), #FAFAFA 85%);
 }
 
 .json-tree-view pre {
@@ -531,7 +544,9 @@ body {
   margin: 0;
   line-height: 1.8;
   white-space: pre;
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 228px;
+  padding-right: 4px;
 }
 
 /* ── JSON Preview ───────────────────────────────────── */
@@ -1040,7 +1055,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  min-height: 380px;
+  align-items: start;
 }
 
 .beacon-sidebar {
@@ -1118,6 +1133,7 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /* max-height: 100%; */
 }
 
 .beacon-output-placeholder {
@@ -1161,7 +1177,24 @@ body {
   border-radius: 3px;
 }
 
-.beacon-output-body { padding: 20px; overflow: auto; }
+.beacon-output-body {
+  padding: 20px;
+  overflow: auto;
+  max-height: 100%;
+}
+
+.beacon-json-scroll {
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-02);
+}
+
+.beacon-json-scroll pre {
+  margin: 0;
+  padding: 14px 16px;
+}
 
 .beacon-output-label {
   font-family: var(--font-mono);
