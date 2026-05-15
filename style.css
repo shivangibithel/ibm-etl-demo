@@ -219,6 +219,12 @@ body {
 
 .card:hover { border-color: var(--border-hi); }
 
+.full-height-card {
+  padding: 0;
+  height: calc(100vh - 200px);
+  min-height: 600px;
+}
+
 @keyframes cardIn {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -323,81 +329,180 @@ body {
 /* ── Three Column Layout ────────────────────────────── */
 .three-column-layout {
   display: grid;
-  grid-template-columns: 320px 1fr 380px;
-  gap: 20px;
-  min-height: 500px;
+  grid-template-columns: 220px 1fr 320px;
+  gap: 0;
+  height: 100%;
 }
 
 /* ── Upload Sidebar (Left) ──────────────────────────── */
 .upload-sidebar {
+  background: #F4F4F4;
+  border-right: 1px solid var(--border);
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+  overflow-y: auto;
 }
 
-.upload-sidebar .upload-zone {
-  padding: 32px 20px;
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.upload-sidebar .card-action {
-  margin-top: 0;
-}
-
-.pipeline-status {
-  animation: fadeUp 0.5s ease both;
-}
-
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.diagram-label {
+.sidebar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-family: var(--font-mono);
+  margin: 0;
+}
+
+.upload-zone-compact {
+  border: 2px dashed var(--border-hi);
+  border-radius: 6px;
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.upload-zone-compact:hover {
+  border-color: var(--ibm-blue);
+  background: rgba(15, 98, 254, 0.02);
+}
+
+.upload-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 4px 0;
+}
+
+.upload-limit {
   font-size: 11px;
-  color: var(--ibm-green);
-  padding: 8px 12px;
-  background: rgba(66, 190, 101, 0.08);
-  border: 1px solid rgba(66, 190, 101, 0.2);
+  color: var(--text-muted);
+  margin: 0 0 12px 0;
+}
+
+.btn-browse {
+  background: white;
+  border: 1px solid var(--border-hi);
+  border-radius: 4px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-browse:hover {
+  background: var(--bg-02);
+  border-color: var(--ibm-blue);
+}
+
+.file-info-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: white;
+  border: 1px solid var(--border);
   border-radius: 4px;
 }
 
-/* ── Pipeline Diagram Panel (Middle) ────────────────── */
-.pipeline-diagram-panel {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-02);
-  overflow: hidden;
-  animation: fadeUp 0.5s ease both;
+.file-info-item svg {
+  flex-shrink: 0;
 }
 
-.panel-header {
-  padding: 12px 16px;
-  background: var(--bg-03);
-  border-bottom: 1px solid var(--border);
-  font-family: var(--font-mono);
+.file-info-name {
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-secondary);
-  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  margin-bottom: 2px;
 }
 
-.pipeline-diagram-panel .diagram-frame {
-  flex: 1;
+.file-info-size {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.file-remove-btn {
+  margin-left: auto;
+  background: none;
   border: none;
-  border-radius: 0;
-  overflow: auto;
-  position: relative;
-  background: var(--bg-02);
+  font-size: 20px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+
+.file-remove-btn:hover {
+  background: var(--bg-03);
+  color: var(--text-primary);
+}
+
+.btn-compile {
+  width: 100%;
+  background: white;
+  border: 1px solid var(--border-hi);
+  border-radius: 4px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.btn-compile:hover:not(:disabled) {
+  background: var(--ibm-blue);
+  color: white;
+  border-color: var(--ibm-blue);
+}
+
+.btn-compile:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Main Content Area (Middle) ─────────────────────── */
+.main-content-area {
+  background: white;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.pipeline-diagram-panel {
+  background: #F8F8F8;
   padding: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pipeline-diagram-panel .diagram-frame {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
 }
 
 .pipeline-diagram-panel .diagram-frame img {
@@ -409,75 +514,24 @@ body {
 
 /* ── JSON Sidebar (Right) ───────────────────────────── */
 .json-sidebar {
-  display: flex;
-  flex-direction: column;
-  animation: fadeUp 0.5s ease both;
+  background: #FAFAFA;
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
 }
 
-.json-expander {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-01);
-  overflow: hidden;
-  height: 100%;
+.json-tree-view {
+  padding: 16px;
 }
 
-.json-expander-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: var(--bg-03);
-  border-bottom: 1px solid var(--border);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.2s;
-}
-
-.json-expander-header:hover {
-  background: var(--bg-04);
-}
-
-.json-chevron {
-  width: 16px;
-  height: 16px;
-  transition: transform 0.2s;
-  color: var(--text-muted);
-}
-
-.json-chevron.open {
-  transform: rotate(180deg);
-}
-
-.json-expander-body {
-  flex: 1;
-  overflow: hidden;
-  max-height: 0;
-  transition: max-height 0.3s ease;
-}
-
-.json-expander-body.open {
-  max-height: 100%;
-  overflow: auto;
-}
-
-.json-expander-body pre {
+.json-tree-view pre {
   font-family: var(--font-mono);
   font-size: 11px;
   color: #1A3A6B;
-  background: #F0F4FF;
-  padding: 16px;
+  background: transparent;
   margin: 0;
-  overflow: auto;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-all;
-  height: 100%;
+  line-height: 1.8;
+  white-space: pre;
+  overflow-x: auto;
 }
 
 /* ── JSON Preview ───────────────────────────────────── */

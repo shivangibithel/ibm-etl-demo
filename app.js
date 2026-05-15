@@ -94,7 +94,7 @@ function revisePipeline() {
   document.getElementById('preExecAction').innerHTML = '';
 
   // Re-show upload zone for a new file
-  document.getElementById('pipelineStatus').classList.add('hidden');
+  document.getElementById('fileInfoSection').classList.add('hidden');
   document.getElementById('pipelineDiagramPanel').classList.add('hidden');
   document.getElementById('jsonSidebar').classList.add('hidden');
   document.getElementById('validateBtn').disabled = true;
@@ -130,10 +130,11 @@ function skipToPreExec() {
 }
 
 function renderLoadedFile(file, data) {
-  // Show pipeline status
-  const status = document.getElementById('pipelineStatus');
-  status.classList.remove('hidden');
+  // Show file info section
+  const fileInfo = document.getElementById('fileInfoSection');
+  fileInfo.classList.remove('hidden');
   document.getElementById('loadedFileName').textContent = file.name;
+  document.getElementById('fileSize').textContent = `${(file.size / 1024).toFixed(1)}KB`;
 
   // Show pipeline diagram panel
   const diagramPanel = document.getElementById('pipelineDiagramPanel');
@@ -146,7 +147,7 @@ function renderLoadedFile(file, data) {
     img.src = generatePlaceholderDataURI();
   };
 
-  // Show JSON sidebar
+  // Show JSON sidebar with formatted JSON
   const jsonSidebar = document.getElementById('jsonSidebar');
   jsonSidebar.classList.remove('hidden');
   document.getElementById('jsonContent').textContent =
@@ -156,18 +157,21 @@ function renderLoadedFile(file, data) {
   document.getElementById('validateBtn').disabled = false;
 }
 
+function removeFile() {
+  pipelineData = null;
+  document.getElementById('fileInfoSection').classList.add('hidden');
+  document.getElementById('pipelineDiagramPanel').classList.add('hidden');
+  document.getElementById('jsonSidebar').classList.add('hidden');
+  document.getElementById('validateBtn').disabled = true;
+  fileInput.value = '';
+}
+
 function countKeys(obj, keyword) {
   const str = JSON.stringify(obj || {});
   const matches = str.match(new RegExp(`"${keyword}"`, 'gi'));
   return matches ? matches.length : 0;
 }
 
-function toggleJsonExpander() {
-  const body = document.getElementById('jsonExpanderBody');
-  const chevron = document.getElementById('jsonChevron');
-  body.classList.toggle('open');
-  chevron.classList.toggle('open');
-}
 
 // ── Placeholder SVG pipeline diagram ────────────────────
 function generatePlaceholderDataURI() {
