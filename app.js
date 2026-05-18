@@ -359,7 +359,6 @@ function renderFixedPipelineLayout(file, data) {
   if (compileSection) {
     compileSection.innerHTML = `
       <button class="btn-compile" onclick="startValidation()">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8L6 11L13 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         Compile Pipeline
       </button>
       <button class="btn-compile" style="width: 100%; margin-top: 8px; padding: 10px 16px; font-size: 13px;" onclick="skipToPreExec()">
@@ -525,7 +524,6 @@ function renderRevisedFile(file, data) {
   if (compileSection) {
     compileSection.innerHTML = `
       <button class="btn-compile" onclick="startValidation()">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8L6 11L13 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         Compile Pipeline
       </button>
       <button class="btn-compile" style="width: 100%; margin-top: 8px; padding: 10px 16px; font-size: 13px;" onclick="skipToPreExec()">
@@ -1077,7 +1075,7 @@ function showValidationReport() {
   if (warn > 0 || fail > 0) {
     action.innerHTML = `
       <div style="margin-bottom: 16px; padding: 14px 20px; background: rgba(241,194,27,0.07); border: 1px solid rgba(241,194,27,0.2); border-radius: 6px; font-size: 13px; color: var(--text-primary);">
-        <strong>⚠️ Action Required:</strong> Please review and fix the identified issues in your pipeline. These issues may lead to incorrect results or pipeline failure. Once fixed, upload the corrected pipeline below.
+        <strong>⚠️ Action Required:</strong> Please review and fix the identified issues in your pipeline. These issues may lead to incorrect results or pipeline failure.
       </div>
       <button class="btn-etl-option" id="exportFixBtn" onclick="exportToFixPipeline()" style="max-width: 300px;">
         Export to Fix Pipeline
