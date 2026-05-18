@@ -60,9 +60,23 @@
               <button class="btn-etl-option" onclick="importFromDataStage()">
                 Import from IBM DataStage
               </button>
-              <button class="btn-etl-option" onclick="window.open('https://www.ibm.com/products/data-integration', '_blank')">
+              <button class="btn-etl-option" onclick="importFromDataStage()">
                 Import from IBM Data Integration Agent
               </button>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <div class="etl-question">
+              <p class="question-text">If you do not have an ETL pipeline, would you like to create?</p>
+              <div class="btn-row">
+                <button class="btn-etl-create" onclick="createWithDataStage()">
+                  IBM DataStage
+                </button>
+                <button class="btn-etl-create" onclick="createWithDIA()">
+                  IBM DIA
+                </button>
+              </div>
             </div>
           </div>
 

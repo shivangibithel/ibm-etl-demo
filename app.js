@@ -312,6 +312,18 @@ async function exportToFixPipeline() {
     btn.disabled = false;
   }
 }
+// ── Create with DataStage ────────────────────────────────
+function createWithDataStage() {
+  // Placeholder function - no functionality yet
+  console.log('Create with IBM DataStage clicked');
+}
+
+// ── Create with DIA ───────────────────────────────────────
+function createWithDIA() {
+  // Placeholder function - no functionality yet
+  console.log('Create with IBM DIA clicked');
+}
+
 
 function renderFixedPipelineLayout(file, data) {
   // Hide all validation sections
@@ -1077,7 +1089,7 @@ function showValidationReport() {
       <div style="margin-bottom: 16px; padding: 14px 20px; background: rgba(241,194,27,0.07); border: 1px solid rgba(241,194,27,0.2); border-radius: 6px; font-size: 13px; color: var(--text-primary);">
         <strong>⚠️ Action Required:</strong> Please review and fix the identified issues in your pipeline. These issues may lead to incorrect results or pipeline failure.
       </div>
-      <button class="btn-etl-option" id="exportFixBtn" onclick="exportToFixPipeline()" style="max-width: 300px;">
+      <button class="btn-etl-option" id="exportFixBtn" onclick="exportToFixPipeline()" style="max-width: 300px; font-size: 14px;">
         Export to Fix Pipeline
       </button>
     `;
