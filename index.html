@@ -29,7 +29,7 @@
   <section class="hero-strip">
     <div class="hero-inner">
       <div class="hero-text">
-        <h1>ETL Pipeline Validation</h1>
+        <h1>BEACON: ETL Pipeline Validation Suite</h1>
         <p>Automated semantic validation and pre-execution data and infrastructure readiness checks.</p>
       </div>
     </div>
@@ -43,22 +43,6 @@
       <div class="three-column-layout">
         <!-- Left Sidebar: Upload Zone -->
         <div class="upload-sidebar">
-          <div class="sidebar-section">
-            <h3 class="sidebar-title">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="vertical-align: middle; margin-right: 8px;">
-                <path d="M10 14V6M10 6L7 9M10 6L13 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
-              </svg>
-              Upload ETL Pipeline
-            </h3>
-            <div class="upload-zone-compact" id="uploadZone">
-              <input type="file" id="fileInput" accept=".json" hidden />
-              <p class="upload-text">Drag and drop file here</p>
-              <p class="upload-limit">Limit 200MB per file • JSON</p>
-              <button class="btn-browse" id="browseLinkBtn">Browse files</button>
-            </div>
-          </div>
-
           <div class="sidebar-section hidden" id="fileInfoSection">
             <div class="file-info-item">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1" stroke="#0F62FE" stroke-width="1.5"/><path d="M6 6h4M6 9h4" stroke="#0F62FE" stroke-width="1.5"/></svg>
@@ -67,6 +51,18 @@
                 <div class="file-info-size" id="fileSize">3.3KB</div>
               </div>
               <button class="file-remove-btn" onclick="removeFile()">×</button>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <div class="etl-question">
+              <p class="question-text">Import an ETL Pipeline</p>
+              <button class="btn-etl-option" onclick="importFromDataStage()">
+                Import from IBM DataStage
+              </button>
+              <button class="btn-etl-option" onclick="window.open('https://www.ibm.com/products/data-integration', '_blank')">
+                Import from IBM Data Integration Agent
+              </button>
             </div>
           </div>
 
@@ -80,6 +76,10 @@
 
         <!-- Middle: Pipeline Diagram & Validation Steps -->
         <div class="main-content-area">
+          <div class="import-spinner-panel hidden" id="importSpinnerPanel">
+            <div class="spinner"></div>
+            <p class="spinner-text" id="importSpinnerText">Importing pipeline from IBM DataStage...</p>
+          </div>
           <div class="pipeline-diagram-panel hidden" id="pipelineDiagramPanel">
             <div class="diagram-frame">
               <img id="pipelineImg" src="pipeline.png" alt="ETL Pipeline Diagram" />

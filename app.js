@@ -9,46 +9,409 @@
 let pipelineData = null;
 let revisedPipelineLoaded = false; // tracks if revise uploaded a new file
 
+// ── Embedded Pipeline Data ───────────────────────────────
+const EMBEDDED_PIPELINE_DATA = {
+  "job_name": "Daily_Net_Sales_Consolidation",
+  "stages": [
+    {
+      "stage_id": "STAGE_POS",
+      "stage_type": "SequentialFile",
+      "name": "POS_Source",
+      "output_link": "L_POS",
+      "schema": [
+        {"name": "order_id", "type": "int32"},
+        {"name": "order_date", "type": "string"},
+        {"name": "store_id", "type": "string"},
+        {"name": "amount_local", "type": "int32"},
+        {"name": "currency", "type": "string"},
+        {"name": "channel", "type": "string"}
+      ],
+      "properties": {
+        "file_path": "POS_Data.csv",
+        "delimiter": ",",
+        "null_field": ""
+      }
+    },
+    {
+      "stage_id": "STAGE_ECOM",
+      "stage_type": "SequentialFile",
+      "name": "ECOM_Source",
+      "output_link": "L_ECOM",
+      "schema": [
+        {"name": "order_id", "type": "int32"},
+        {"name": "order_date", "type": "string"},
+        {"name": "customer_id", "type": "string"},
+        {"name": "amount_usd", "type": "int32"},
+        {"name": "currency_flag", "type": "string"},
+        {"name": "channel", "type": "string"}
+      ],
+      "properties": {
+        "file_path": "ECOM_Data.csv",
+        "delimiter": ","
+      }
+    },
+    {
+      "stage_id": "STAGE_RETURNS",
+      "stage_type": "SequentialFile",
+      "name": "Returns_Source",
+      "output_link": "L_RETURNS",
+      "schema": [
+        {"name": "order_id", "type": "int32"},
+        {"name": "return_amount_local", "type": "int32"},
+        {"name": "return_date", "type": "string"},
+        {"name": "currency", "type": "string"}
+      ],
+      "properties": {
+        "file_path": "Returns_Data_Correct.csv",
+        "delimiter": ","
+      }
+    },
+    {
+      "stage_id": "STAGE_JOIN1",
+      "stage_type": "Join",
+      "name": "Join_POS_ECOM",
+      "input_links": ["L_POS", "L_ECOM"],
+      "output_link": "L_MERGED_ORDERS",
+      "properties": {
+        "join_type": "full_outer",
+        "join_keys": ["order_id"]
+      }
+    },
+    {
+      "stage_id": "STAGE_JOIN2",
+      "stage_type": "Join",
+      "name": "Join_With_Returns",
+      "input_links": ["L_MERGED_ORDERS", "L_RETURNS"],
+      "output_link": "L_MERGED_WITH_RETURNS",
+      "properties": {
+        "join_type": "left_outer",
+        "join_keys": ["order_id"]
+      }
+    },
+    {
+      "stage_id": "STAGE_TRANSFORM",
+      "stage_type": "Transformer",
+      "name": "Compute_Net",
+      "input_links": ["L_MERGED_WITH_RETURNS"],
+      "output_link": "L_TRANSFORMED",
+      "properties": {
+        "expressions": {
+          "amount_usd": "IF currency='USD' THEN amount_local ELSE amount_local * rate_to_usd",
+          "net_amount_usd": "amount_usd - NVL(return_amount_usd,0)"
+        }
+      }
+    },
+    {
+      "stage_id": "STAGE_AGG",
+      "stage_type": "Aggregator",
+      "name": "Aggregate_Daily",
+      "input_links": ["L_TRANSFORMED"],
+      "output_link": "L_DAILY",
+      "properties": {
+        "group_by": ["order_date", "channel"],
+        "aggregations": {
+          "total_amount_usd": "SUM(amount_usd)",
+          "total_net_amount_usd": "SUM(net_amount_usd)"
+        }
+      }
+    },
+    {
+      "stage_id": "STAGE_TARGET",
+      "stage_type": "DatabaseConnector",
+      "name": "Load_To_Fact",
+      "input_links": ["L_DAILY"],
+      "output_table": "FACT_DAILY_SALES"
+    }
+  ]
+};
+
+// ── Embedded Fixed Pipeline Data ─────────────────────────
+const EMBEDDED_FIXED_PIPELINE_DATA = {
+  "job_name": "Daily_Net_Sales_Consolidation",
+  "stages": [
+    {
+      "stage_id": "STAGE_POS",
+      "stage_type": "SequentialFile",
+      "name": "POS_Source",
+      "output_link": "L_POS",
+      "schema": [
+        {"name": "order_id", "type": "int32"},
+        {"name": "order_date", "type": "string"},
+        {"name": "store_id", "type": "string"},
+        {"name": "amount_local", "type": "int32"},
+        {"name": "currency", "type": "string"},
+        {"name": "channel", "type": "string"}
+      ],
+      "properties": {
+        "file_path": "POS_Data.csv",
+        "delimiter": ",",
+        "null_field": ""
+      }
+    },
+    {
+      "stage_id": "STAGE_ECOM",
+      "stage_type": "SequentialFile",
+      "name": "ECOM_Source",
+      "output_link": "L_ECOM",
+      "schema": [
+        {"name": "order_id", "type": "int32"},
+        {"name": "order_date", "type": "string"},
+        {"name": "customer_id", "type": "string"},
+        {"name": "amount_usd", "type": "int32"},
+        {"name": "currency_flag", "type": "string"},
+        {"name": "channel", "type": "string"}
+      ],
+      "properties": {
+        "file_path": "ECOM_Data.csv",
+        "delimiter": ","
+      }
+    },
+    {
+      "stage_id": "STAGE_RETURNS",
+      "stage_type": "SequentialFile",
+      "name": "Returns_Source",
+      "output_link": "L_RETURNS",
+      "schema": [
+        {"name": "order_id", "type": "int32"},
+        {"name": "return_amount_local", "type": "int32"},
+        {"name": "return_date", "type": "string"},
+        {"name": "currency", "type": "string"}
+      ],
+      "properties": {
+        "file_path": "Returns_Data_Correct.csv",
+        "delimiter": ","
+      }
+    },
+    {
+      "stage_id": "STAGE_JOIN1",
+      "stage_type": "Join",
+      "name": "Join_POS_ECOM",
+      "input_links": ["L_POS", "L_ECOM"],
+      "output_link": "L_MERGED_ORDERS",
+      "properties": {
+        "join_type": "full_outer",
+        "join_keys": ["order_id"]
+      }
+    },
+    {
+      "stage_id": "STAGE_JOIN2",
+      "stage_type": "Join",
+      "name": "Join_With_Returns",
+      "input_links": ["L_MERGED_ORDERS", "L_RETURNS"],
+      "output_link": "L_MERGED_WITH_RETURNS",
+      "properties": {
+        "join_type": "left_outer",
+        "join_keys": ["order_id"]
+      }
+    },
+    {
+      "stage_id": "STAGE_TRANSFORM",
+      "stage_type": "Transformer",
+      "name": "Compute_Net",
+      "input_links": ["L_MERGED_WITH_RETURNS"],
+      "output_link": "L_TRANSFORMED",
+      "properties": {
+        "expressions": {
+          "amount_usd": "IF currency='USD' THEN amount_local ELSE amount_local * rate_to_usd",
+          "net_amount_usd": "amount_usd - NVL(return_amount_usd,0)"
+        }
+      }
+    },
+    {
+      "stage_id": "STAGE_AGG",
+      "stage_type": "Aggregator",
+      "name": "Aggregate_Daily",
+      "input_links": ["L_TRANSFORMED"],
+      "output_link": "L_DAILY",
+      "properties": {
+        "group_by": ["order_date", "channel"],
+        "aggregations": {
+          "total_amount_usd": "SUM(amount_usd)",
+          "total_net_amount_usd": "SUM(net_amount_usd)"
+        }
+      }
+    },
+    {
+      "stage_id": "STAGE_TARGET",
+      "stage_type": "DatabaseConnector",
+      "name": "Load_To_Fact",
+      "input_links": ["L_DAILY"],
+      "output_table": "FACT_DAILY_SALES"
+    }
+  ]
+};
+
+// ── Import from DataStage ────────────────────────────────
+async function importFromDataStage() {
+  // Show spinner in the middle panel
+  const spinnerPanel = document.getElementById('importSpinnerPanel');
+  const diagramPanel = document.getElementById('pipelineDiagramPanel');
+  const jsonSidebar = document.getElementById('jsonSidebar');
+  
+  spinnerPanel.classList.remove('hidden');
+  diagramPanel.classList.add('hidden');
+  jsonSidebar.classList.add('hidden');
+  
+  // Simulate import delay (3 seconds)
+  await delay(3000);
+  
+  // Use embedded pipeline data
+  pipelineData = EMBEDDED_PIPELINE_DATA;
+  
+  // Create a mock file object for display
+  const mockFile = {
+    name: 'pipeline.json',
+    size: JSON.stringify(pipelineData).length
+  };
+  
+  // Hide spinner and show the loaded pipeline
+  spinnerPanel.classList.add('hidden');
+  renderLoadedFile(mockFile, pipelineData);
+}
+
+async function exportToFixPipeline() {
+  const btn = document.getElementById('exportFixBtn');
+  if (!btn) {
+    console.error('Export button not found');
+    return;
+  }
+  
+  const originalHTML = btn.innerHTML;
+  
+  // Show spinner on button
+  btn.innerHTML = '<div class="spinner" style="width: 14px; height: 14px; border-width: 2px; margin: 0;"></div>';
+  btn.disabled = true;
+  
+  try {
+    // Wait 10 seconds
+    await delay(10000);
+    
+    // Use embedded fixed pipeline data
+    const fixedPipelineData = EMBEDDED_FIXED_PIPELINE_DATA;
+    
+    // Store the data
+    pipelineData = fixedPipelineData;
+    
+    // Create a mock file object for display
+    const mockFile = {
+      name: 'fixed_pipeline.json',
+      size: JSON.stringify(fixedPipelineData).length
+    };
+    
+    // Scroll to top
+    window.scrollTo({ behavior: 'smooth', top: 0 });
+    
+    // Show the special layout with 4 buttons
+    renderFixedPipelineLayout(mockFile, fixedPipelineData);
+  } catch (error) {
+    console.error('Error loading fixed pipeline:', error);
+    alert('Error loading fixed pipeline file: ' + error.message);
+    
+    // Restore button on error
+    btn.innerHTML = originalHTML;
+    btn.disabled = false;
+  }
+}
+
+function renderFixedPipelineLayout(file, data) {
+  // Hide all validation sections
+  ['section-validation', 'section-val-report', 'section-preexec'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  });
+
+  // Show file info section
+  const fileInfo = document.getElementById('fileInfoSection');
+  if (fileInfo) {
+    fileInfo.classList.remove('hidden');
+    const fileNameEl = document.getElementById('loadedFileName');
+    const fileSizeEl = document.getElementById('fileSize');
+    if (fileNameEl) fileNameEl.textContent = file.name;
+    if (fileSizeEl) fileSizeEl.textContent = `${(file.size / 1024).toFixed(1)}KB`;
+  }
+
+  // Show pipeline diagram panel
+  const diagramPanel = document.getElementById('pipelineDiagramPanel');
+  if (diagramPanel) diagramPanel.classList.remove('hidden');
+
+  // Show JSON sidebar with formatted JSON
+  const jsonSidebar = document.getElementById('jsonSidebar');
+  const jsonContent = document.getElementById('jsonContent');
+  if (jsonSidebar) jsonSidebar.classList.remove('hidden');
+  if (jsonContent) jsonContent.textContent = JSON.stringify(data, null, 2);
+
+  // Update the sidebar to show all 4 buttons
+  const etlQuestion = document.querySelector('.etl-question');
+  if (etlQuestion) {
+    etlQuestion.innerHTML = `
+      <p class="question-text">Import an ETL Pipeline</p>
+      <button class="btn-etl-option" onclick="importFromDataStage()">
+        Import from IBM DataStage
+      </button>
+      <button class="btn-etl-option" onclick="window.open('https://www.ibm.com/products/data-integration', '_blank')">
+        Import from IBM Data Integration Agent
+      </button>
+    `;
+  }
+
+  // Update the compile button section with two buttons
+  const compileSection = document.querySelector('.sidebar-section:last-child');
+  if (compileSection) {
+    compileSection.innerHTML = `
+      <button class="btn-compile" onclick="startValidation()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8L6 11L13 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Compile Pipeline
+      </button>
+      <button class="btn-compile" style="width: 100%; margin-top: 8px; padding: 10px 16px; font-size: 13px;" onclick="skipToPreExec()">
+        Skip Compilation → Generate Pre-Execution Checks
+      </button>
+    `;
+  }
+}
+
 // ── Upload Zone Setup ────────────────────────────────────
 const uploadZone = document.getElementById('uploadZone');
 const fileInput  = document.getElementById('fileInput');
 
-// Only open file dialog when clicking the zone itself, NOT when
-// a child element (like the browse button) already handles it.
-uploadZone.addEventListener('click', e => {
-  // If the click came from the browse button, it calls fileInput.click()
-  // directly — don't double-trigger here.
-  if (e.target.closest('.btn-browse')) return;
-  fileInput.click();
-});
-
-// The "browse files" button inside the zone
-const browseLinkBtn = document.getElementById('browseLinkBtn');
-if (browseLinkBtn) {
-  browseLinkBtn.addEventListener('click', e => {
-    e.stopPropagation(); // prevent bubbling to uploadZone
+// Only setup upload zone if elements exist
+if (uploadZone && fileInput) {
+  // Only open file dialog when clicking the zone itself, NOT when
+  // a child element (like the browse button) already handles it.
+  uploadZone.addEventListener('click', e => {
+    // If the click came from the browse button, it calls fileInput.click()
+    // directly — don't double-trigger here.
+    if (e.target.closest('.btn-browse')) return;
     fileInput.click();
   });
+
+  // The "browse files" button inside the zone
+  const browseLinkBtn = document.getElementById('browseLinkBtn');
+  if (browseLinkBtn) {
+    browseLinkBtn.addEventListener('click', e => {
+      e.stopPropagation(); // prevent bubbling to uploadZone
+      fileInput.click();
+    });
+  }
+
+  uploadZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+  });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+
+  fileInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file) handleFile(file, revisedPipelineLoaded);
+    // Reset so re-selecting same file still fires 'change'
+    fileInput.value = '';
+  });
 }
-
-uploadZone.addEventListener('dragover', e => {
-  e.preventDefault();
-  uploadZone.classList.add('dragover');
-});
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-uploadZone.addEventListener('drop', e => {
-  e.preventDefault();
-  uploadZone.classList.remove('dragover');
-  const file = e.dataTransfer.files[0];
-  if (file) handleFile(file);
-});
-
-fileInput.addEventListener('change', e => {
-  const file = e.target.files[0];
-  if (file) handleFile(file, revisedPipelineLoaded);
-  // Reset so re-selecting same file still fires 'change'
-  fileInput.value = '';
-});
 
 function handleFile(file, isRevise = false) {
   if (!file.name.endsWith('.json')) {
@@ -716,11 +1079,8 @@ function showValidationReport() {
       <div style="margin-bottom: 16px; padding: 14px 20px; background: rgba(241,194,27,0.07); border: 1px solid rgba(241,194,27,0.2); border-radius: 6px; font-size: 13px; color: var(--text-primary);">
         <strong>⚠️ Action Required:</strong> Please review and fix the identified issues in your pipeline. These issues may lead to incorrect results or pipeline failure. Once fixed, upload the corrected pipeline below.
       </div>
-      <button class="btn-secondary" onclick="revisePipeline()">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="margin-right: 6px;">
-          <path d="M8 2v12M8 2l-3 3M8 2l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        Upload Fixed Pipeline
+      <button class="btn-etl-option" id="exportFixBtn" onclick="exportToFixPipeline()" style="max-width: 300px;">
+        Export to Fix Pipeline
       </button>
     `;
   } else {

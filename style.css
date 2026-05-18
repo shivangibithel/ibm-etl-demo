@@ -319,7 +319,7 @@ body {
 /* ── Three Column Layout ────────────────────────────── */
 .three-column-layout {
   display: grid;
-  grid-template-columns: 220px 1fr 320px;
+  grid-template-columns: 300px 1fr 320px;
   gap: 0;
   align-items: stretch;
   position: relative;
@@ -471,12 +471,77 @@ body {
   cursor: not-allowed;
 }
 
+.etl-question {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: rgba(15, 98, 254, 0.05);
+  border: 1px solid rgba(15, 98, 254, 0.2);
+  border-radius: 6px;
+}
+
+.question-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin: 0 0 6px 0;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.btn-etl-option {
+  width: 100%;
+  background: white;
+  border: 1px solid var(--ibm-blue);
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ibm-blue);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.btn-etl-option:hover {
+  background: var(--ibm-blue);
+  color: white;
+}
+
+.btn-etl-option:hover svg {
+  stroke: white;
+}
+
+.btn-etl-option svg {
+  stroke: var(--ibm-blue);
+  transition: stroke 0.2s;
+}
+
 /* ── Main Content Area (Middle) ─────────────────────── */
 .main-content-area {
   background: white;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+}
+
+.import-spinner-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  min-height: 300px;
+}
+
+.import-spinner-panel .spinner-text {
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--text-secondary);
 }
 
 .pipeline-diagram-panel {
