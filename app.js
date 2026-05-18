@@ -404,16 +404,6 @@ const PRE_EXEC_STEPS = [
     output: {
       issues: [
         {
-          issue_type: "null_constraint_violation",
-          stage: "stage5",
-          column: "channel",
-          source_columns: ["channel"],
-          description: "NULL values in 'channel' column can cause pipeline failure as it is passed through multiple stages.",
-          connectivity_code: "dsn = (f\"DATABASE={database_name};HOSTNAME={database_hostname};PORT={database_port};PROTOCOL={database_protocol};UID={database_userid};PWD={database_password};SECURITY={database_security};\")\nconn = ibm_db.connect(dsn, \"\", \"\")",
-          sql_validation: "SELECT channel, COUNT(*) as occurrence_count FROM POS_Source WHERE channel IS NULL GROUP BY channel FETCH FIRST 100 ROWS ONLY;",
-          remediation: "Ensure that 'channel' column in POS_Source table does not contain NULL values. Consider adding NOT NULL constraint or handling NULL values appropriately in the ETL pipeline."
-        },
-        {
           issue_type: "invalid_format",
           stage: "stage5",
           column: "order_date",
@@ -423,6 +413,17 @@ const PRE_EXEC_STEPS = [
           sql_validation: "SELECT order_date, COUNT(*) as occurrence_count FROM POS_Source WHERE order_date IS NOT NULL AND REGEXP_LIKE(order_date, '^[0-9]{2}-[0-9]{2}-[0-9]{4}$') = 0 GROUP BY order_date FETCH FIRST 100 ROWS ONLY;",
           remediation: "Validate and standardize the date format in 'order_date' column to prevent data type mismatches or failures in date-based calculations."
         },
+        {
+          issue_type: "null_constraint_violation",
+          stage: "stage5",
+          column: "channel",
+          source_columns: ["channel"],
+          description: "NULL values in 'channel' column can cause pipeline failure as it is passed through multiple stages.",
+          connectivity_code: "dsn = (f\"DATABASE={database_name};HOSTNAME={database_hostname};PORT={database_port};PROTOCOL={database_protocol};UID={database_userid};PWD={database_password};SECURITY={database_security};\")\nconn = ibm_db.connect(dsn, \"\", \"\")",
+          sql_validation: "SELECT channel, COUNT(*) as occurrence_count FROM POS_Source WHERE channel IS NULL GROUP BY channel FETCH FIRST 100 ROWS ONLY;",
+          remediation: "Ensure that 'channel' column in POS_Source table does not contain NULL values. Consider adding NOT NULL constraint or handling NULL values appropriately in the ETL pipeline."
+        }
+        
       ]
     }
   },
@@ -433,10 +434,6 @@ const PRE_EXEC_STEPS = [
     output: {
       issues: [
         {
-          issue_type: "datastage_resource_constraints",
-          description: "Check for DataStage service resource constraints and infrastructure issues."
-        },
-        {
           issue_type: "source_table_reference",
           description: "Validate that source tables referenced in pipeline exist."
         },
@@ -446,7 +443,7 @@ const PRE_EXEC_STEPS = [
         },
         {
           issue_type: "connection_stability",
-          description: "Detect potential connection stability issues (lost connections, unexpected closures)."
+          description: "Detect potential connection stability issues."
         }
       ]
     }
@@ -623,7 +620,9 @@ async function runAnalysisSteps() {
     `;
     sidebar.appendChild(row);
 
-    await delay(900);
+    // Variable delay: 3 seconds for stages 2-4 (indices 1-3), 2 seconds for others
+    const delayTime = (i >= 1 && i <= 3) ? 4000 : 3000;
+    await delay(delayTime);
 
     // Upgrade to final state
     const badgeClass = step.badge;
@@ -788,8 +787,8 @@ function toggleCheckPanel(filter, checksArray = VALIDATION_CHECKS) {
   }
   activeCheckFilter = filter;
   document.querySelectorAll('.report-stat').forEach(s => s.classList.remove('kpi-active'));
-  const idx = { all: 0, pass: 1, warn: 3, fail: 2 }; // order in grid
-  document.querySelectorAll('.report-stat')[['all','pass','warn','fail'].indexOf(filter)]?.classList.add('kpi-active');
+  const idx = { pass: 0, fail: 1, warn: 2, all: 3 }; // order in grid: PASSED, FAILED, WARNINGS, TOTAL CHECKS
+  document.querySelectorAll('.report-stat')[idx[filter]]?.classList.add('kpi-active');
 
   const filtered = filter === 'all' ? checksArray : checksArray.filter(c => c.status === filter);
   panel.innerHTML = filtered.map(c => {
@@ -861,7 +860,9 @@ async function runPreExecSteps() {
     `;
     sidebar.appendChild(row);
 
-    await delay(900);
+    // Variable delay: 3 seconds for first stage, 4 seconds for others
+    const delayTime = (i === 0) ? 3000 : 4000;
+    await delay(delayTime);
 
     // Determine final state
     // Force 'complete' status for Data Volume & Null Profiling and Constraint & Referential Integrity

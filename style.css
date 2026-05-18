@@ -322,6 +322,7 @@ body {
   grid-template-columns: 220px 1fr 320px;
   gap: 0;
   align-items: stretch;
+  position: relative;
 }
 
 /* ── Upload Sidebar (Left) ──────────────────────────── */
@@ -510,6 +511,10 @@ body {
   display: flex;
   flex-direction: column;
   padding: 16px;
+  resize: horizontal;
+  overflow: auto;
+  min-width: 250px;
+  max-width: 600px;
 }
 
 .json-tree-view {
@@ -526,7 +531,7 @@ body {
   line-height: 1.8;
   white-space: pre;
   overflow: auto;
-  max-height: 228px;
+  max-height: 325px;
   padding-right: 4px;
 }
 
