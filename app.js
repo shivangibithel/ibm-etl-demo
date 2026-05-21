@@ -320,8 +320,7 @@ function createWithDataStage() {
 
 // ── Create with DIA ───────────────────────────────────────
 function createWithDIA() {
-  // Placeholder function - no functionality yet
-  console.log('Create with IBM DIA clicked');
+  window.open('https://dai.test.cloud.ibm.com/df/home?context=df', '_blank');
 }
 
 
