@@ -371,7 +371,7 @@ function renderFixedPipelineLayout(file, data) {
   if (compileSection) {
     compileSection.innerHTML = `
       <button class="btn-compile" onclick="startValidation()">
-        Compile Pipeline
+        Validate Pipeline
       </button>
       <button class="btn-compile" style="width: 100%; margin-top: 8px; padding: 10px 16px; font-size: 13px;" onclick="skipToPreExec()">
         Skip Compilation → Generate Pre-Execution Checks
@@ -536,7 +536,7 @@ function renderRevisedFile(file, data) {
   if (compileSection) {
     compileSection.innerHTML = `
       <button class="btn-compile" onclick="startValidation()">
-        Compile Pipeline
+        Validate Pipeline
       </button>
       <button class="btn-compile" style="width: 100%; margin-top: 8px; padding: 10px 16px; font-size: 13px;" onclick="skipToPreExec()">
         Skip Compilation → Generate Pre-Execution Checks
